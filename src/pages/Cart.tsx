@@ -83,7 +83,6 @@ export default function Cart() {
   };
 
   const deliveryFee = orderType === 'delivery' ? (settings?.delivery_fee || 0) : 0;
-  const showTableNumber = orderType === 'dine_in';
   const finalTotal = total + deliveryFee;
 
   const getItemPrice = (item: typeof items[0]) => {
@@ -181,11 +180,7 @@ export default function Cart() {
       message += `\n\n`;
     } else if (orderType === 'dine_in') {
       message += `🍽️ *COMER NO LOCAL*\n`;
-      message += `${separator}\n`;
-      if (tableNumber) {
-        message += `🪑 Mesa: ${tableNumber}\n`;
-      }
-      message += `\n`;
+      message += `${separator}\n\n`;
     } else {
       message += `🏪 *RETIRADA NO LOCAL*\n`;
       message += `${separator}\n\n`;
@@ -233,11 +228,6 @@ export default function Cart() {
     
     if (orderType === 'delivery' && !address) {
       toast.error('Preencha o endereço de entrega');
-      return;
-    }
-
-    if (orderType === 'dine_in' && !tableNumber) {
-      toast.error('Informe o número da mesa');
       return;
     }
 
@@ -395,21 +385,6 @@ export default function Cart() {
               </div>
             </RadioGroup>
           </div>
-
-          {/* Table Number for Dine In */}
-          {showTableNumber && (
-            <div className="space-y-2">
-              <Label htmlFor="tableNumber" className="text-foreground">Número da Mesa *</Label>
-              <Input 
-                id="tableNumber" 
-                value={tableNumber} 
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="Ex: 5"
-                required
-                className="max-w-[150px]"
-              />
-            </div>
-          )}
 
           {/* Customer Info with Edit Toggle */}
           <div className="space-y-4">
