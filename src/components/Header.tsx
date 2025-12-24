@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X } from 'lucide-react';
+import { ShoppingCart, Menu, X, Settings } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import logo from '@/assets/logo-transparent.png';
 
 interface HeaderProps {
@@ -13,6 +14,7 @@ interface HeaderProps {
 export function Header({ onCategorySelect, selectedCategory }: HeaderProps) {
   const { data: categories } = useCategories();
   const { items } = useCart();
+  const { isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -48,6 +50,11 @@ export function Header({ onCategorySelect, selectedCategory }: HeaderProps) {
           
           {/* Right Icons */}
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Link to="/admin" className="p-2 hover:bg-muted rounded-lg transition-colors" title="Painel Admin">
+                <Settings className="h-5 w-5 text-primary" />
+              </Link>
+            )}
             <Link to="/cart" className="relative p-2 hover:bg-muted rounded-lg transition-colors">
               <ShoppingCart className="h-5 w-5 text-foreground" />
               {cartCount > 0 && (

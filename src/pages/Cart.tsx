@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, UtensilsCrossed, Banknote, CreditCard, QrCode, Edit2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote, CreditCard, QrCode, Edit2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart, generateCartItemKey } from '@/contexts/CartContext';
 import { useSettings } from '@/hooks/useSettings';
@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 
-type OrderType = 'delivery' | 'pickup' | 'table';
+type OrderType = 'delivery' | 'pickup';
 type PaymentMethod = 'cash' | 'pix' | 'credit' | 'debit';
 
 const STORAGE_KEY = 'espaco_imperial_customer';
@@ -138,10 +138,8 @@ export default function Cart() {
       message += `\n🏠 *Endereço:* ${address}`;
       if (addressComplement) message += ` - ${addressComplement}`;
       message += `\n`;
-    } else if (orderType === 'pickup') {
-      message += `\n🏪 *Retirada no local*\n`;
     } else {
-      message += `\n🍽️ *Mesa:* ${tableNumber}\n`;
+      message += `\n🏪 *Retirada no local*\n`;
     }
     
     message += `\n💵 *TOTAL: R$ ${finalTotal.toFixed(2)}*`;
@@ -164,11 +162,6 @@ export default function Cart() {
     
     if (orderType === 'delivery' && !address) {
       toast.error('Preencha o endereço de entrega');
-      return;
-    }
-    
-    if (orderType === 'table' && !tableNumber) {
-      toast.error('Informe o número da mesa');
       return;
     }
 
@@ -280,7 +273,7 @@ export default function Cart() {
             <RadioGroup 
               value={orderType} 
               onValueChange={(v) => setOrderType(v as OrderType)}
-              className="grid grid-cols-3 gap-3"
+              className="grid grid-cols-2 gap-3"
             >
               <div>
                 <RadioGroupItem value="delivery" id="delivery" className="peer sr-only" />
@@ -300,16 +293,6 @@ export default function Cart() {
                 >
                   <Store className="h-6 w-6" />
                   <span className="text-sm font-medium">Retirada</span>
-                </Label>
-              </div>
-              <div>
-                <RadioGroupItem value="table" id="table" className="peer sr-only" />
-                <Label
-                  htmlFor="table"
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
-                >
-                  <UtensilsCrossed className="h-6 w-6" />
-                  <span className="text-sm font-medium">Mesa</span>
                 </Label>
               </div>
             </RadioGroup>
@@ -390,20 +373,6 @@ export default function Cart() {
             </div>
           )}
 
-          {/* Table Number */}
-          {orderType === 'table' && (
-            <div className="space-y-2">
-              <Label htmlFor="tableNum" className="text-foreground">Número da Mesa *</Label>
-              <Input 
-                id="tableNum" 
-                type="number"
-                value={tableNumber} 
-                onChange={(e) => setTableNumber(e.target.value)}
-                placeholder="Ex: 5"
-                required
-              />
-            </div>
-          )}
 
           {/* Payment Method */}
           <div className="space-y-3">

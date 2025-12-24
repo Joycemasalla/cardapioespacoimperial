@@ -96,7 +96,7 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0 glass-effect border-primary/20">
         {/* Image */}
         <div className="relative aspect-video">
           {product.image_url ? (

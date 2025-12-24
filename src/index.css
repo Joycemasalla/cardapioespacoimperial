@@ -114,4 +114,19 @@
   .glow-gold {
     box-shadow: 0 0 20px hsl(43 74% 49% / 0.3);
   }
+
+  .card-elegant {
+    @apply bg-card border border-border rounded-lg overflow-hidden transition-all duration-300;
+    @apply hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10;
+  }
+
+  .card-glow {
+    @apply bg-card border border-border rounded-lg overflow-hidden transition-all duration-500;
+    @apply hover:border-primary hover:shadow-xl hover:shadow-primary/20;
+    @apply hover:-translate-y-1;
+  }
+
+  .glass-effect {
+    @apply bg-card/80 backdrop-blur-md border border-border/50;
+  }
 }

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, LogOut, Package, BarChart3, Settings as SettingsIcon, Edit2, FolderOpen } from 'lucide-react';
+import { Plus, Trash2, LogOut, Package, BarChart3, Settings as SettingsIcon, Edit2, FolderOpen, ClipboardList } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
@@ -17,6 +17,7 @@ import { Product, Category } from '@/types';
 import { ProductEditModal } from '@/components/admin/ProductEditModal';
 import { CategoryEditModal } from '@/components/admin/CategoryEditModal';
 import { SettingsPanel } from '@/components/admin/SettingsPanel';
+import { OrdersPanel } from '@/components/admin/OrdersPanel';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -119,37 +120,49 @@ export default function Admin() {
       </header>
 
       <div className="container py-6">
-        <Tabs defaultValue="products" className="w-full">
-          <TabsList className="mb-8 bg-transparent border-b border-border rounded-none w-full justify-start gap-8 h-auto p-0">
+        <Tabs defaultValue="orders" className="w-full">
+          <TabsList className="mb-8 bg-transparent border-b border-border rounded-none w-full justify-start gap-4 md:gap-8 h-auto p-0 overflow-x-auto flex-nowrap">
+            <TabsTrigger 
+              value="orders" 
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2 whitespace-nowrap"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Pedidos
+            </TabsTrigger>
             <TabsTrigger 
               value="products" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <Package className="h-4 w-4" />
               Produtos
             </TabsTrigger>
             <TabsTrigger 
               value="categories" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <FolderOpen className="h-4 w-4" />
               Categorias
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <SettingsIcon className="h-4 w-4" />
               Configurações
             </TabsTrigger>
             <TabsTrigger 
               value="statistics" 
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary pb-3 px-0 uppercase tracking-wide font-medium flex items-center gap-2 whitespace-nowrap"
             >
               <BarChart3 className="h-4 w-4" />
               Estatísticas
             </TabsTrigger>
           </TabsList>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders">
+            <OrdersPanel />
+          </TabsContent>
 
           {/* Products Tab */}
           <TabsContent value="products" className="space-y-6">
