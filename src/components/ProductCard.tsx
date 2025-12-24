@@ -23,15 +23,15 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in hover:border-primary/50 transition-all group">
-      <div className="relative">
+      <div className="relative aspect-[4/3]">
         {product.image_url ? (
           <img 
             src={product.image_url} 
             alt={product.name}
-            className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-40 bg-muted flex items-center justify-center">
+          <div className="w-full h-full bg-muted flex items-center justify-center">
             <span className="text-4xl">🍽️</span>
           </div>
         )}
@@ -48,9 +48,9 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
       
       <div className="p-4">
-        <h3 className="font-semibold text-lg text-foreground">{product.name}</h3>
+        <h3 className="font-semibold text-base text-foreground line-clamp-1">{product.name}</h3>
         {product.description && (
-          <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
+          <p className="text-muted-foreground text-sm mt-1 line-clamp-2 min-h-[2.5rem]">
             {product.description}
           </p>
         )}

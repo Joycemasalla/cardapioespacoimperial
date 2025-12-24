@@ -1,62 +1,62 @@
 import { useState } from 'react';
 import { Header } from '@/components/Header';
+import { HeroBanner } from '@/components/HeroBanner';
+import { CategoryDropdown } from '@/components/CategoryDropdown';
 import { ProductCard } from '@/components/ProductCard';
+import { Footer } from '@/components/Footer';
 import { WhatsAppFloatingButton } from '@/components/WhatsAppFloatingButton';
 import { CartButton } from '@/components/CartButton';
 import { useCategories } from '@/hooks/useCategories';
 import { useProducts } from '@/hooks/useProducts';
-import { Input } from '@/components/ui/input';
-import { Search, Settings } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export default function Index() {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
-  const [search, setSearch] = useState('');
   
   const { data: categories } = useCategories();
   const { data: products, isLoading: loadingProducts } = useProducts(selectedCategory);
 
-  const filteredProducts = products?.filter((product) =>
-    product.name.toLowerCase().includes(search.toLowerCase()) ||
-    product.description?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleCategorySelect = (categoryId: string | undefined) => {
+    setSelectedCategory(categoryId);
+  };
+
+  const categoryName = selectedCategory 
+    ? categories?.find(c => c.id === selectedCategory)?.name 
+    : 'Cardápio Completo';
 
   return (
-    <div className="min-h-screen bg-background dark">
-      <Header />
+    <div className="min-h-screen bg-background flex flex-col dark">
+      <Header onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
       
-      <div className="container py-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar produtos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
-      </div>
+      <HeroBanner />
+      
+      <CategoryDropdown value={selectedCategory} onChange={setSelectedCategory} />
 
-      <div className="container pb-4">
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          <button onClick={() => setSelectedCategory(undefined)} className={`px-4 py-2 rounded-full border transition-all whitespace-nowrap ${!selectedCategory ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/50'}`}>Todos</button>
-          {categories?.map((category) => (
-            <button key={category.id} onClick={() => setSelectedCategory(category.id)} className={`px-4 py-2 rounded-full border transition-all whitespace-nowrap ${selectedCategory === category.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:border-primary/50'}`}>{category.name}</button>
-          ))}
-        </div>
-      </div>
-
-      <section className="container pb-32">
-        <h2 className="text-xl font-display font-semibold mb-4">{selectedCategory ? categories?.find(c => c.id === selectedCategory)?.name : 'Cardápio Completo'}</h2>
+      <main className="container flex-1 pb-32">
+        <h2 className="text-2xl font-display font-semibold mb-6 text-center text-foreground">
+          {categoryName}
+        </h2>
+        
         {loadingProducts ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <div key={i} className="bg-card border border-border rounded-lg h-64 animate-pulse" />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-card border border-border rounded-lg h-80 animate-pulse" />
+            ))}
           </div>
-        ) : filteredProducts?.length === 0 ? (
-          <p className="text-center py-12 text-muted-foreground">{search ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado ainda'}</p>
+        ) : products?.length === 0 ? (
+          <p className="text-center py-12 text-muted-foreground">
+            Nenhum produto cadastrado nesta categoria
+          </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProducts?.map((product) => <ProductCard key={product.id} product={product} />)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products?.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
         )}
-      </section>
+      </main>
 
-      <Link to="/admin" className="fixed bottom-6 left-6 z-40 p-3 bg-card border border-border rounded-full hover:border-primary/50"><Settings className="h-5 w-5 text-muted-foreground" /></Link>
+      <Footer />
+      
       <CartButton />
       <WhatsAppFloatingButton />
     </div>
