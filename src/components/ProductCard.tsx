@@ -1,28 +1,27 @@
 import { Product } from '@/types';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useCart } from '@/contexts/CartContext';
-import { toast } from 'sonner';
 
 interface ProductCardProps {
   product: Product;
+  onClick?: () => void;
+  minPrice?: number;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
-  const { addItem } = useCart();
-
+export function ProductCard({ product, onClick, minPrice }: ProductCardProps) {
   const hasPromotion = product.promotion && product.promotion.is_active;
   const discountedPrice = hasPromotion 
     ? product.price * (1 - product.promotion!.discount_percent / 100)
     : product.price;
 
-  const handleAdd = () => {
-    addItem(product);
-    toast.success(`${product.name} adicionado ao carrinho!`);
-  };
+  const displayPrice = minPrice ?? discountedPrice;
+  const showFromPrice = minPrice !== undefined && minPrice < product.price;
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in hover:border-primary/50 transition-all group">
+    <button
+      onClick={onClick}
+      className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in hover:border-primary/50 transition-all group text-left w-full"
+    >
       <div className="relative aspect-[4/3]">
         {product.image_url ? (
           <img 
@@ -57,26 +56,24 @@ export function ProductCard({ product }: ProductCardProps) {
         
         <div className="flex items-center justify-between mt-4">
           <div className="flex flex-col">
-            {hasPromotion && (
+            {showFromPrice && (
+              <span className="text-muted-foreground text-xs">a partir de</span>
+            )}
+            {hasPromotion && !showFromPrice && (
               <span className="text-muted-foreground line-through text-sm">
                 R$ {product.price.toFixed(2)}
               </span>
             )}
             <span className="text-primary font-bold text-lg">
-              R$ {discountedPrice.toFixed(2)}
+              R$ {displayPrice.toFixed(2)}
             </span>
           </div>
           
-          <Button 
-            size="sm" 
-            onClick={handleAdd}
-            className="gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            Adicionar
-          </Button>
+          <div className="bg-primary text-primary-foreground rounded-full p-2 group-hover:scale-110 transition-transform">
+            <Plus className="h-5 w-5" />
+          </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }

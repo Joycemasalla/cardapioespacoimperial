@@ -8,6 +8,16 @@ export interface Category {
   created_at: string;
 }
 
+export interface ProductVariation {
+  id: string;
+  product_id: string;
+  name: string;
+  price: number;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
   category_id: string | null;
@@ -20,6 +30,7 @@ export interface Product {
   created_at: string;
   category?: Category;
   promotion?: Promotion;
+  variations?: ProductVariation[];
 }
 
 export interface Promotion {
@@ -36,6 +47,8 @@ export interface CartItem {
   product: Product;
   quantity: number;
   notes?: string;
+  variation?: ProductVariation;
+  secondFlavor?: Product; // For half-and-half pizzas
 }
 
 export interface Order {

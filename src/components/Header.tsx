@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
 import { useCart } from '@/contexts/CartContext';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/logo-transparent.png';
 
 interface HeaderProps {
   onCategorySelect?: (categoryId: string | undefined) => void;

@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { CartItem, Product } from '@/types';
+import { CartItem, Product, ProductVariation } from '@/types';
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (product: Product, quantity?: number, notes?: string) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (product: Product, quantity?: number, notes?: string, variation?: ProductVariation, secondFlavor?: Product) => void;
+  removeItem: (cartItemKey: string) => void;
+  updateQuantity: (cartItemKey: string, quantity: number) => void;
   clearCart: () => void;
   total: number;
   itemCount: number;
@@ -13,42 +13,64 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Generate a unique key for cart items
+export const generateCartItemKey = (product: Product, variation?: ProductVariation, secondFlavor?: Product) => {
+  let key = product.id;
+  if (variation) key += `-${variation.id}`;
+  if (secondFlavor) key += `-${secondFlavor.id}`;
+  return key;
+};
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addItem = (product: Product, quantity = 1, notes?: string) => {
+  const addItem = (product: Product, quantity = 1, notes?: string, variation?: ProductVariation, secondFlavor?: Product) => {
     setItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
+      const key = generateCartItemKey(product, variation, secondFlavor);
+      const existing = prev.find((item) => 
+        generateCartItemKey(item.product, item.variation, item.secondFlavor) === key
+      );
+      
       if (existing) {
         return prev.map((item) =>
-          item.product.id === product.id
+          generateCartItemKey(item.product, item.variation, item.secondFlavor) === key
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { product, quantity, notes }];
+      return [...prev, { product, quantity, notes, variation, secondFlavor }];
     });
   };
 
-  const removeItem = (productId: string) => {
-    setItems((prev) => prev.filter((item) => item.product.id !== productId));
+  const removeItem = (cartItemKey: string) => {
+    setItems((prev) => prev.filter((item) => 
+      generateCartItemKey(item.product, item.variation, item.secondFlavor) !== cartItemKey
+    ));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (cartItemKey: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(cartItemKey);
       return;
     }
     setItems((prev) =>
       prev.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        generateCartItemKey(item.product, item.variation, item.secondFlavor) === cartItemKey 
+          ? { ...item, quantity } 
+          : item
       )
     );
   };
 
   const clearCart = () => setItems([]);
 
-  const getDiscountedPrice = (product: Product) => {
+  const getItemPrice = (item: CartItem) => {
+    // If has variation, use variation price
+    if (item.variation) {
+      return item.variation.price;
+    }
+    // Otherwise use product price with promotion if applicable
+    const product = item.product;
     if (product.promotion && product.promotion.is_active) {
       const discount = product.promotion.discount_percent / 100;
       return product.price * (1 - discount);
@@ -57,7 +79,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const total = items.reduce(
-    (sum, item) => sum + getDiscountedPrice(item.product) * item.quantity,
+    (sum, item) => sum + getItemPrice(item) * item.quantity,
     0
   );
 
