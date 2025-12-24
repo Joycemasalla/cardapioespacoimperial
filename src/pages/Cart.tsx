@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import OrderPreviewModal from '@/components/OrderPreviewModal';
+import OrderSuccessModal from '@/components/OrderSuccessModal';
 
 type OrderType = 'delivery' | 'pickup';
 type PaymentMethod = 'cash' | 'pix' | 'card';
@@ -44,6 +46,11 @@ export default function Cart() {
   const [isEditing, setIsEditing] = useState(false);
   const [hasSavedData, setHasSavedData] = useState(false);
   const [pixCopied, setPixCopied] = useState(false);
+  
+  // Order flow modals
+  const [showPreview, setShowPreview] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
 
   // Load saved customer data
   useEffect(() => {
@@ -118,38 +125,92 @@ export default function Cart() {
     }
   };
 
-  const formatOrderMessage = () => {
-    let message = `🍔 *Novo Pedido - ${settings?.store_name || 'Espaço Imperial'}*\n\n`;
-    message += `👤 *Cliente:* ${customerName}\n`;
+  const generateOrderNumber = () => {
+    const timestamp = Date.now().toString().slice(-4);
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    return `${timestamp}${random}`;
+  };
+
+  const formatDateTime = () => {
+    const now = new Date();
+    return now.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatOrderMessage = (orderNum: string) => {
+    const separator = '━━━━━━━━━━━━━━━━━━━━';
+    
+    let message = `🍔 *${settings?.store_name || 'Espaço Imperial'}*\n`;
+    message += `${separator}\n\n`;
+    
+    message += `📋 *PEDIDO #${orderNum}*\n`;
+    message += `🕐 ${formatDateTime()}\n\n`;
+    
+    message += `${separator}\n`;
+    message += `👤 *CLIENTE*\n`;
+    message += `${separator}\n`;
+    message += `Nome: ${customerName}\n`;
     if (customerPhone) {
-      message += `📱 *Telefone:* ${customerPhone}\n`;
+      message += `WhatsApp: ${customerPhone}\n`;
     }
     message += `\n`;
     
-    message += `📋 *Itens:*\n`;
+    message += `${separator}\n`;
+    message += `🛒 *ITENS DO PEDIDO*\n`;
+    message += `${separator}\n`;
     items.forEach((item) => {
       const price = getItemPrice(item);
       const name = getItemName(item);
-      message += `• ${item.quantity}x ${name} - R$ ${(price * item.quantity).toFixed(2)}\n`;
+      message += `• ${item.quantity}x ${name}\n`;
+      message += `   R$ ${(price * item.quantity).toFixed(2)}\n`;
     });
+    message += `\n`;
     
-    message += `\n💰 *Subtotal:* R$ ${total.toFixed(2)}\n`;
-    
+    message += `${separator}\n`;
     if (orderType === 'delivery') {
-      message += `🚚 *Taxa de Entrega:* R$ ${deliveryFee.toFixed(2)}\n`;
-      message += `\n🏠 *Endereço:* ${address}`;
-      if (addressComplement) message += ` - ${addressComplement}`;
-      message += `\n`;
+      message += `🚚 *ENTREGA*\n`;
+      message += `${separator}\n`;
+      message += `📍 ${address}`;
+      if (addressComplement) message += `\n   ${addressComplement}`;
+      message += `\n\n`;
     } else {
-      message += `\n🏪 *Retirada no local*\n`;
+      message += `🏪 *RETIRADA NO LOCAL*\n`;
+      message += `${separator}\n\n`;
     }
     
-    message += `\n💵 *TOTAL: R$ ${finalTotal.toFixed(2)}*`;
-    message += `\n\n💳 *Pagamento:* ${formatPaymentMethod()}`;
+    message += `${separator}\n`;
+    message += `💰 *VALORES*\n`;
+    message += `${separator}\n`;
+    message += `Subtotal: R$ ${total.toFixed(2)}\n`;
+    if (orderType === 'delivery') {
+      message += `Entrega: R$ ${deliveryFee.toFixed(2)}\n`;
+    }
+    message += `*TOTAL: R$ ${finalTotal.toFixed(2)}*\n\n`;
+    
+    message += `${separator}\n`;
+    message += `💳 *PAGAMENTO*\n`;
+    message += `${separator}\n`;
+    message += `${formatPaymentMethod()}\n`;
+    
+    if (paymentMethod === 'pix') {
+      message += `\n⚠️ _Envie o comprovante PIX nesta conversa_\n`;
+    }
     
     if (notes) {
-      message += `\n\n📝 *Observações:* ${notes}`;
+      message += `\n${separator}\n`;
+      message += `📝 *OBSERVAÇÕES*\n`;
+      message += `${separator}\n`;
+      message += `${notes}\n`;
     }
+    
+    message += `\n${separator}\n`;
+    message += `✨ Obrigado pela preferência!\n`;
+    message += `${separator}`;
     
     return message;
   };
@@ -172,16 +233,28 @@ export default function Cart() {
       return;
     }
 
+    // Generate order number and show preview
+    const newOrderNumber = generateOrderNumber();
+    setOrderNumber(newOrderNumber);
+    setShowPreview(true);
+  };
+
+  const handleConfirmOrder = () => {
     // Save customer data
     saveCustomerData();
 
     const whatsappNumber = settings?.whatsapp_number || '5511999999999';
-    const message = encodeURIComponent(formatOrderMessage());
+    const message = encodeURIComponent(formatOrderMessage(orderNumber));
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
     
     window.open(whatsappUrl, '_blank');
+    setShowPreview(false);
     clearCart();
-    toast.success('Pedido enviado! Finalize no WhatsApp');
+    setShowSuccess(true);
+  };
+
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
     navigate('/');
   };
 
@@ -547,6 +620,25 @@ export default function Cart() {
           </p>
         </form>
       </div>
+
+      {/* Order Preview Modal */}
+      <OrderPreviewModal
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        message={formatOrderMessage(orderNumber)}
+        onConfirm={handleConfirmOrder}
+      />
+
+      {/* Order Success Modal */}
+      <OrderSuccessModal
+        open={showSuccess}
+        onClose={handleCloseSuccess}
+        orderNumber={orderNumber}
+        pixKey={settings?.pix_key}
+        whatsappNumber={settings?.whatsapp_number || '5511999999999'}
+        total={finalTotal}
+        paymentMethod={paymentMethod}
+      />
     </div>
   );
 }
