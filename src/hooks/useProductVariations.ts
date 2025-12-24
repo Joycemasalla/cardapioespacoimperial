@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductVariation } from '@/types';
 
@@ -34,6 +34,68 @@ export function useAllProductVariations() {
 
       if (error) throw error;
       return data as ProductVariation[];
+    },
+  });
+}
+
+export function useCreateProductVariation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (variation: Omit<ProductVariation, 'id' | 'created_at'>) => {
+      const { data, error } = await supabase
+        .from('product_variations')
+        .insert(variation)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['product-variations', variables.product_id] });
+      queryClient.invalidateQueries({ queryKey: ['all-product-variations'] });
+    },
+  });
+}
+
+export function useUpdateProductVariation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (variation: Partial<ProductVariation> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('product_variations')
+        .update(variation)
+        .eq('id', variation.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-variations'] });
+      queryClient.invalidateQueries({ queryKey: ['all-product-variations'] });
+    },
+  });
+}
+
+export function useDeleteProductVariation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('product_variations')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-variations'] });
+      queryClient.invalidateQueries({ queryKey: ['all-product-variations'] });
     },
   });
 }
