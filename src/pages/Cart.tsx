@@ -11,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 
 type OrderType = 'delivery' | 'pickup';
-type PaymentMethod = 'cash' | 'pix' | 'credit' | 'debit';
+type PaymentMethod = 'cash' | 'pix' | 'card';
 
 const STORAGE_KEY = 'espaco_imperial_customer';
 
@@ -112,17 +112,18 @@ export default function Cart() {
         return cashText;
       case 'pix':
         return '📱 PIX';
-      case 'credit':
-        return '💳 Cartão de Crédito';
-      case 'debit':
-        return '💳 Cartão de Débito';
+      case 'card':
+        return '💳 Cartão';
     }
   };
 
   const formatOrderMessage = () => {
     let message = `🍔 *Novo Pedido - ${settings?.store_name || 'Espaço Imperial'}*\n\n`;
     message += `👤 *Cliente:* ${customerName}\n`;
-    message += `📱 *Telefone:* ${customerPhone}\n\n`;
+    if (customerPhone) {
+      message += `📱 *Telefone:* ${customerPhone}\n`;
+    }
+    message += `\n`;
     
     message += `📋 *Itens:*\n`;
     items.forEach((item) => {
@@ -155,8 +156,8 @@ export default function Cart() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!customerName || !customerPhone) {
-      toast.error('Preencha seu nome e telefone');
+    if (!customerName) {
+      toast.error('Preencha seu nome');
       return;
     }
     
@@ -330,13 +331,12 @@ export default function Cart() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-foreground">WhatsApp *</Label>
+                <Label htmlFor="phone" className="text-foreground">WhatsApp (opcional)</Label>
                 <Input 
                   id="phone" 
                   value={customerPhone} 
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="(11) 99999-9999"
-                  required
                   disabled={hasSavedData && !isEditing}
                   className="disabled:opacity-70"
                 />
@@ -409,23 +409,13 @@ export default function Cart() {
                 </Label>
               </div>
               <div>
-                <RadioGroupItem value="credit" id="credit" className="peer sr-only" />
+                <RadioGroupItem value="card" id="card" className="peer sr-only" />
                 <Label
-                  htmlFor="credit"
+                  htmlFor="card"
                   className="flex items-center gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
                 >
                   <CreditCard className="h-5 w-5" />
-                  <span className="font-medium">Crédito</span>
-                </Label>
-              </div>
-              <div>
-                <RadioGroupItem value="debit" id="debit" className="peer sr-only" />
-                <Label
-                  htmlFor="debit"
-                  className="flex items-center gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
-                >
-                  <CreditCard className="h-5 w-5" />
-                  <span className="font-medium">Débito</span>
+                  <span className="font-medium">Cartão</span>
                 </Label>
               </div>
             </RadioGroup>
