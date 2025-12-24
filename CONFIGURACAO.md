@@ -4,19 +4,30 @@ Este documento explica todas as variáveis de ambiente e configurações necess�
 
 ---
 
-## 📋 Variáveis de Ambiente (.env)
+## 📋 Variáveis de Ambiente
 
-O arquivo `.env` contém as credenciais para conectar ao banco de dados. 
+### Usando Lovable Cloud (Configuração Automática)
 
-> ⚠️ **IMPORTANTE**: Este arquivo é gerado automaticamente pelo Lovable Cloud. NÃO edite manualmente!
+Se você está usando o Lovable Cloud, o arquivo `.env` é gerado automaticamente. **NÃO edite manualmente!**
+
+### Usando Supabase Próprio (Configuração Manual)
+
+Se você está migrando para um Supabase próprio:
+
+1. Copie o arquivo `.env.example` para `.env`
+2. Preencha com suas credenciais do Supabase
+
+```bash
+cp .env.example .env
+```
 
 ### Variáveis Disponíveis
 
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `VITE_SUPABASE_URL` | URL do banco de dados Supabase | `https://xxxxx.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública de acesso (anon key) | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
-| `VITE_SUPABASE_PROJECT_ID` | ID único do projeto | `uqmdeopssmmawwmefhke` |
+| Variável | Descrição | Onde Encontrar |
+|----------|-----------|----------------|
+| `VITE_SUPABASE_URL` | URL do banco de dados Supabase | Dashboard > Settings > API > Project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública de acesso (anon key) | Dashboard > Settings > API > anon public |
+| `VITE_SUPABASE_PROJECT_ID` | ID único do projeto | Parte da URL (ex: `abcdef123` de `abcdef123.supabase.co`) |
 
 ### O que cada variável faz?
 
@@ -32,6 +43,75 @@ O arquivo `.env` contém as credenciais para conectar ao banco de dados.
 3. **VITE_SUPABASE_PROJECT_ID**
    - Identificador único do projeto
    - Usado internamente para URLs e configurações
+
+---
+
+## 🔄 MIGRAÇÃO PARA SUPABASE PRÓPRIO
+
+### Passo 1: Criar Conta no Supabase
+
+1. Acesse [supabase.com](https://supabase.com)
+2. Clique em **"Start your project"**
+3. Faça login com GitHub ou email
+4. Clique em **"New Project"**
+5. Escolha um nome e senha para o banco
+6. Selecione a região mais próxima (ex: São Paulo)
+7. Aguarde a criação (~2 minutos)
+
+### Passo 2: Executar o Script SQL
+
+1. No dashboard do Supabase, vá em **SQL Editor**
+2. Clique em **"New query"**
+3. Abra o arquivo `SCRIPT_MIGRACAO_COMPLETO.sql` deste projeto
+4. Copie TODO o conteúdo e cole no editor
+5. Clique em **"Run"** (ou Ctrl+Enter)
+6. Aguarde a execução (~30 segundos)
+
+### Passo 3: Obter Credenciais
+
+1. Vá em **Settings** > **API**
+2. Copie:
+   - **Project URL** → `VITE_SUPABASE_URL`
+   - **anon public** (em Project API keys) → `VITE_SUPABASE_PUBLISHABLE_KEY`
+   - O ID do projeto está na URL (ex: `abcdef123.supabase.co` → ID é `abcdef123`)
+
+### Passo 4: Configurar Storage
+
+1. Vá em **Storage** no menu lateral
+2. O bucket `images` já foi criado pelo script
+3. Verifique se está como **Public**
+
+### Passo 5: Criar Usuário Admin
+
+1. Vá em **Authentication** > **Users**
+2. Clique em **"Add user"**
+3. Preencha email e senha
+4. Clique em **"Create user"**
+5. Copie o **User UID** (UUID do usuário criado)
+6. Vá em **SQL Editor** e execute:
+
+```sql
+INSERT INTO public.user_roles (user_id, role) 
+VALUES ('COLE_O_USER_UID_AQUI', 'admin');
+```
+
+### Passo 6: Desativar Confirmação de Email (Opcional)
+
+Para facilitar testes:
+
+1. Vá em **Authentication** > **Providers**
+2. Clique em **Email**
+3. Desative **"Confirm email"**
+4. Salve
+
+### Passo 7: Configurar o Projeto
+
+1. No VS Code, copie `.env.example` para `.env`
+2. Preencha com suas credenciais
+3. Execute `npm install`
+4. Execute `npm run dev`
+5. Acesse `http://localhost:5173`
+6. Teste o login em `/auth` com o usuário admin criado
 
 ---
 
@@ -63,8 +143,9 @@ RLS são regras que controlam quem pode ver/editar cada dado:
 | O que | URL |
 |-------|-----|
 | **Aplicação Local** | `http://localhost:5173` |
-| **Aplicação Publicada** | Disponível após publicar no Lovable |
+| **Aplicação Publicada** | Depende da hospedagem (ver HOSPEDAGEM.md) |
 | **Painel Admin** | `/admin` (requer login) |
+| **Dashboard Supabase** | `https://supabase.com/dashboard/project/SEU_PROJECT_ID` |
 
 ---
 
@@ -101,7 +182,7 @@ O projeto usa **Supabase** (baseado em PostgreSQL) com as seguintes tabelas:
 
 ### `supabase/config.toml`
 - Configuração do projeto Supabase
-- **NÃO EDITAR** - gerado automaticamente
+- **NÃO EDITAR** - gerado automaticamente (apenas no Lovable Cloud)
 
 ---
 
@@ -114,8 +195,8 @@ Se precisar adicionar novas variáveis de ambiente:
    - Exemplo: `VITE_MINHA_VARIAVEL=valor`
 
 2. **Para variáveis privadas** (só no backend):
-   - Use o sistema de Secrets do Lovable Cloud
-   - Acesse: Configurações > Cloud > Secrets
+   - Use o sistema de Secrets do Supabase
+   - Ou configure no servidor de hospedagem
 
 3. **Acessar no código**:
    ```typescript
@@ -143,3 +224,12 @@ Se precisar adicionar novas variáveis de ambiente:
 - Verifique se existem dados no banco (painel admin)
 - Confira as políticas RLS da tabela
 - Veja o console do navegador (F12) para erros
+
+### "Não consigo fazer login como admin"
+- Verifique se o usuário foi criado corretamente
+- Confirme se a role foi adicionada (tabela `user_roles`)
+- Verifique se "Confirm email" está desativado
+
+### "Imagens não carregam"
+- Verifique se o bucket `images` existe e está público
+- Confira as políticas RLS do storage

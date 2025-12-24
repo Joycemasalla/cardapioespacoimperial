@@ -24,8 +24,8 @@ Este documento explica toda a estrutura do código para facilitar a manutenção
    ```
 
 3. **Configure as variáveis de ambiente**
-   - Veja o arquivo `CONFIGURACAO.md` para detalhes
-   - O arquivo `.env` já vem configurado pelo Lovable Cloud
+   - Se usando Lovable Cloud: O arquivo `.env` já vem configurado
+   - Se usando Supabase próprio: Copie `.env.example` para `.env` e preencha
 
 4. **Inicie o servidor de desenvolvimento**
    ```bash
@@ -37,15 +37,46 @@ Este documento explica toda a estrutura do código para facilitar a manutenção
 
 ---
 
+## 🔄 Migração para Supabase Próprio
+
+Se você quer ter controle total do banco de dados:
+
+### Arquivos de Migração
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `SCRIPT_MIGRACAO_COMPLETO.sql` | Script SQL com toda estrutura + dados |
+| `.env.example` | Modelo das variáveis de ambiente |
+| `CONFIGURACAO.md` | Guia detalhado de configuração |
+| `HOSPEDAGEM.md` | Guia de hospedagem gratuita |
+
+### Checklist de Migração
+
+- [ ] Criar conta no [supabase.com](https://supabase.com)
+- [ ] Criar novo projeto
+- [ ] Executar `SCRIPT_MIGRACAO_COMPLETO.sql` no SQL Editor
+- [ ] Copiar credenciais (URL e anon key)
+- [ ] Copiar `.env.example` para `.env` e preencher
+- [ ] Criar usuário admin (Authentication > Users)
+- [ ] Adicionar role de admin (SQL: `INSERT INTO user_roles...`)
+- [ ] Desativar "Confirm email" (opcional)
+- [ ] Testar localmente: `npm run dev`
+- [ ] Hospedar (ver `HOSPEDAGEM.md`)
+
+---
+
 ## 📁 Estrutura de Pastas
 
 ```
 projeto/
 │
-├── 📄 .env                    # Variáveis de ambiente (NÃO EDITAR MANUALMENTE)
+├── 📄 .env                    # Variáveis de ambiente
+├── 📄 .env.example            # Modelo para Supabase próprio
 ├── 📄 LEIAME_CODIGO.md        # Este arquivo - guia principal
 ├── 📄 CONFIGURACAO.md         # Explicação das variáveis de ambiente
+├── 📄 HOSPEDAGEM.md           # Guia de hospedagem gratuita
 ├── 📄 MANUTENCAO.md           # Guia de onde mexer para cada coisa
+├── 📄 SCRIPT_MIGRACAO_COMPLETO.sql  # SQL para Supabase próprio
 │
 ├── 📁 public/                 # Arquivos públicos estáticos
 │   ├── favicon.ico            # Ícone da aba do navegador
@@ -214,7 +245,11 @@ Use o hook `useCreateProduct()` do arquivo `src/hooks/useProducts.ts`.
 Edite o arquivo `src/index.css` e `tailwind.config.ts`.
 
 ### Como ver os dados do banco?
-Acesse o painel admin em `/admin` ou use as ferramentas do Lovable Cloud.
+- **Lovable Cloud**: Use as ferramentas do Lovable
+- **Supabase próprio**: Acesse o dashboard do Supabase
 
 ### Onde ficam as configurações da loja?
 No banco de dados, tabela `settings`. Acesse pelo painel admin > Configurações.
+
+### Como hospedar o cardápio?
+Veja o arquivo `HOSPEDAGEM.md` para instruções detalhadas de hospedagem gratuita.
