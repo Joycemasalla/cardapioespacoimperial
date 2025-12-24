@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, LogOut, Package, BarChart3, Settings as SettingsIcon, Edit2, FolderOpen, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, LogOut, Package, BarChart3, Settings as SettingsIcon, Edit2, FolderOpen, ClipboardList, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import logo from '@/assets/logo.png';
@@ -18,6 +18,7 @@ import { ProductEditModal } from '@/components/admin/ProductEditModal';
 import { CategoryEditModal } from '@/components/admin/CategoryEditModal';
 import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { OrdersPanel } from '@/components/admin/OrdersPanel';
+import { FirstAdminOnboarding } from '@/components/admin/FirstAdminOnboarding';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -95,13 +96,7 @@ export default function Admin() {
   }
 
   if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-background dark flex flex-col items-center justify-center p-4">
-        <p className="text-muted-foreground mb-4">Você não tem permissão de administrador.</p>
-        <p className="text-sm text-muted-foreground mb-4">Para testar, adicione seu usuário à tabela user_roles com role 'admin'.</p>
-        <Link to="/"><Button variant="outline">Voltar ao Cardápio</Button></Link>
-      </div>
-    );
+    return <FirstAdminOnboarding user={user} />;
   }
 
   return (

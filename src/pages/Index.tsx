@@ -12,7 +12,6 @@ import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { useCategories } from '@/hooks/useCategories';
 import { useProducts } from '@/hooks/useProducts';
 import { useAllProductVariations } from '@/hooks/useProductVariations';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Product, ProductVariation } from '@/types';
 
 export default function Index() {
@@ -22,7 +21,6 @@ export default function Index() {
   const { data: categories } = useCategories();
   const { data: products, isLoading: loadingProducts } = useProducts(selectedCategory);
   const { data: allVariations } = useAllProductVariations();
-  const isMobile = useIsMobile();
 
   const handleCategorySelect = (categoryId: string | undefined) => {
     setSelectedCategory(categoryId);
@@ -67,39 +65,49 @@ export default function Index() {
         </h2>
         
         {loadingProducts ? (
-          <div className={isMobile ? 'space-y-3' : 'grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className={`bg-card border border-border rounded-lg animate-pulse ${isMobile ? 'h-24' : 'h-80'}`} />
-            ))}
-          </div>
+          <>
+            {/* Mobile skeleton */}
+            <div className="space-y-3 md:hidden">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-card border border-border rounded-lg animate-pulse h-24" />
+              ))}
+            </div>
+            {/* Desktop skeleton */}
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="bg-card border border-border rounded-lg animate-pulse h-80" />
+              ))}
+            </div>
+          </>
         ) : products?.length === 0 ? (
           <p className="text-center py-12 text-muted-foreground">
             Nenhum produto cadastrado nesta categoria
           </p>
-        ) : isMobile ? (
-          // Mobile: List view
-          <div className="space-y-3">
-            {products?.map((product) => (
-              <ProductListItem 
-                key={product.id} 
-                product={product} 
-                onClick={() => handleProductClick(product)}
-                minPrice={getMinPrice(product.id)}
-              />
-            ))}
-          </div>
         ) : (
-          // Desktop: Grid view
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products?.map((product) => (
-              <ProductCard 
-                key={product.id} 
-                product={product} 
-                onClick={() => handleProductClick(product)}
-                minPrice={getMinPrice(product.id)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Mobile: List view */}
+            <div className="space-y-3 md:hidden">
+              {products?.map((product) => (
+                <ProductListItem 
+                  key={product.id} 
+                  product={product} 
+                  onClick={() => handleProductClick(product)}
+                  minPrice={getMinPrice(product.id)}
+                />
+              ))}
+            </div>
+            {/* Desktop: Grid view */}
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products?.map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  onClick={() => handleProductClick(product)}
+                  minPrice={getMinPrice(product.id)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
 
