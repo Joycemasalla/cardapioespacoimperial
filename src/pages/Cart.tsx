@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote, CreditCard, QrCode, Edit2, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote, CreditCard, QrCode, Edit2, Copy, Check, Utensils, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart, generateCartItemKey } from '@/contexts/CartContext';
 import { useSettings } from '@/hooks/useSettings';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import OrderPreviewModal from '@/components/OrderPreviewModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
 
-type OrderType = 'delivery' | 'pickup';
+type OrderType = 'delivery' | 'pickup' | 'dine_in';
 type PaymentMethod = 'cash' | 'pix' | 'card';
 
 const STORAGE_KEY = 'espaco_imperial_customer';
@@ -83,6 +83,7 @@ export default function Cart() {
   };
 
   const deliveryFee = orderType === 'delivery' ? (settings?.delivery_fee || 0) : 0;
+  const showTableNumber = orderType === 'dine_in';
   const finalTotal = total + deliveryFee;
 
   const getItemPrice = (item: typeof items[0]) => {
@@ -178,6 +179,13 @@ export default function Cart() {
       message += `📍 ${address}`;
       if (addressComplement) message += `\n   ${addressComplement}`;
       message += `\n\n`;
+    } else if (orderType === 'dine_in') {
+      message += `🍽️ *COMER NO LOCAL*\n`;
+      message += `${separator}\n`;
+      if (tableNumber) {
+        message += `🪑 Mesa: ${tableNumber}\n`;
+      }
+      message += `\n`;
     } else {
       message += `🏪 *RETIRADA NO LOCAL*\n`;
       message += `${separator}\n\n`;
@@ -225,6 +233,11 @@ export default function Cart() {
     
     if (orderType === 'delivery' && !address) {
       toast.error('Preencha o endereço de entrega');
+      return;
+    }
+
+    if (orderType === 'dine_in' && !tableNumber) {
+      toast.error('Informe o número da mesa');
       return;
     }
 
@@ -348,30 +361,55 @@ export default function Cart() {
             <RadioGroup 
               value={orderType} 
               onValueChange={(v) => setOrderType(v as OrderType)}
-              className="grid grid-cols-2 gap-3"
+              className="grid grid-cols-3 gap-3"
             >
               <div>
                 <RadioGroupItem value="delivery" id="delivery" className="peer sr-only" />
                 <Label
                   htmlFor="delivery"
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
+                  className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
                 >
-                  <MapPin className="h-6 w-6" />
-                  <span className="text-sm font-medium">Delivery</span>
+                  <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-xs sm:text-sm font-medium">Delivery</span>
                 </Label>
               </div>
               <div>
                 <RadioGroupItem value="pickup" id="pickup" className="peer sr-only" />
                 <Label
                   htmlFor="pickup"
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
+                  className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
                 >
-                  <Store className="h-6 w-6" />
-                  <span className="text-sm font-medium">Retirada</span>
+                  <Store className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-xs sm:text-sm font-medium">Retirada</span>
+                </Label>
+              </div>
+              <div>
+                <RadioGroupItem value="dine_in" id="dine_in" className="peer sr-only" />
+                <Label
+                  htmlFor="dine_in"
+                  className="flex flex-col items-center gap-2 p-3 sm:p-4 rounded-lg border border-border bg-card cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 transition-all text-foreground"
+                >
+                  <Utensils className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <span className="text-xs sm:text-sm font-medium">No Local</span>
                 </Label>
               </div>
             </RadioGroup>
           </div>
+
+          {/* Table Number for Dine In */}
+          {showTableNumber && (
+            <div className="space-y-2">
+              <Label htmlFor="tableNumber" className="text-foreground">Número da Mesa *</Label>
+              <Input 
+                id="tableNumber" 
+                value={tableNumber} 
+                onChange={(e) => setTableNumber(e.target.value)}
+                placeholder="Ex: 5"
+                required
+                className="max-w-[150px]"
+              />
+            </div>
+          )}
 
           {/* Customer Info with Edit Toggle */}
           <div className="space-y-4">
@@ -496,39 +534,53 @@ export default function Cart() {
 
             {/* PIX Key Display */}
             {paymentMethod === 'pix' && settings?.pix_key && (
-              <div className="mt-4 p-4 bg-primary/10 border border-primary/30 rounded-lg space-y-3">
-                <div className="flex items-center gap-2 text-primary font-medium">
-                  <QrCode className="h-5 w-5" />
-                  <span>Chave PIX para pagamento</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-background border border-border rounded-lg p-3 font-mono text-sm text-foreground break-all">
-                    {settings.pix_key}
+              <div className="mt-4 space-y-3">
+                {/* PIX Key Card */}
+                <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2 text-primary font-medium">
+                    <QrCode className="h-5 w-5" />
+                    <span>Chave PIX para pagamento</span>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-12 w-12 flex-shrink-0"
-                    onClick={() => {
-                      navigator.clipboard.writeText(settings.pix_key || '');
-                      setPixCopied(true);
-                      toast.success('Chave PIX copiada!');
-                      setTimeout(() => setPixCopied(false), 2000);
-                    }}
-                  >
-                    {pixCopied ? (
-                      <Check className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <Copy className="h-5 w-5" />
-                    )}
-                  </Button>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-background border border-border rounded-lg p-3 font-mono text-sm text-foreground break-all">
+                      {settings.pix_key}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-12 w-12 flex-shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(settings.pix_key || '');
+                        setPixCopied(true);
+                        toast.success('Chave PIX copiada!');
+                        setTimeout(() => setPixCopied(false), 2000);
+                      }}
+                    >
+                      {pixCopied ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Copy className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  📱 Após pagar, envie o comprovante junto com seu pedido no WhatsApp para confirmar.
-                </p>
+
+                {/* PIX Warning Alert */}
+                <div className="p-4 bg-amber-500/15 border-2 border-amber-500/50 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-amber-600 dark:text-amber-400">
+                        ⚠️ ATENÇÃO
+                      </p>
+                      <p className="text-sm text-foreground">
+                        Após realizar o pagamento, <strong>envie o comprovante PIX</strong> junto com seu pedido pelo WhatsApp para confirmar!
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
