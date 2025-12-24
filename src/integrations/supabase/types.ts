@@ -235,6 +235,7 @@ export type Database = {
           delivery_fee: number | null
           id: string
           is_open: boolean | null
+          pix_key: string | null
           store_address: string | null
           store_name: string | null
           updated_at: string | null
@@ -244,6 +245,7 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           is_open?: boolean | null
+          pix_key?: string | null
           store_address?: string | null
           store_name?: string | null
           updated_at?: string | null
@@ -253,6 +255,7 @@ export type Database = {
           delivery_fee?: number | null
           id?: string
           is_open?: boolean | null
+          pix_key?: string | null
           store_address?: string | null
           store_name?: string | null
           updated_at?: string | null

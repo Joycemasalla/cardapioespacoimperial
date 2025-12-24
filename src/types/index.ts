@@ -73,5 +73,6 @@ export interface Settings {
   store_address: string | null;
   delivery_fee: number;
   is_open: boolean;
+  pix_key: string | null;
   updated_at: string;
 }

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2, LogOut, Package, BarChart3, Settings as SettingsIcon, Edit2, FolderOpen, ClipboardList, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import logo from '@/assets/logo.png';
+import logo from '@/assets/logo-transparent.png';
 import { Product, Category } from '@/types';
 import { ProductEditModal } from '@/components/admin/ProductEditModal';
 import { CategoryEditModal } from '@/components/admin/CategoryEditModal';

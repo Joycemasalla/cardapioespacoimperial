@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Save, Store, Phone, MapPin, Truck, Clock } from 'lucide-react';
+import { Save, Store, Phone, MapPin, Truck, Clock, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { Settings } from '@/types';
 import { useUpdateSettings } from '@/hooks/useSettings';
@@ -19,6 +19,7 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
     store_address: '',
     delivery_fee: '',
     is_open: true,
+    pix_key: '',
   });
 
   const updateSettings = useUpdateSettings();
@@ -31,6 +32,7 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
         store_address: settings.store_address || '',
         delivery_fee: String(settings.delivery_fee || 0),
         is_open: settings.is_open ?? true,
+        pix_key: settings.pix_key || '',
       });
     }
   }, [settings]);
@@ -46,6 +48,7 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
         store_address: formData.store_address || null,
         delivery_fee: parseFloat(formData.delivery_fee) || 0,
         is_open: formData.is_open,
+        pix_key: formData.pix_key || null,
       });
       toast.success('Configurações salvas!');
     } catch (error) {
@@ -139,6 +142,23 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
             className="bg-background border-border text-foreground w-32"
             placeholder="0.00"
           />
+        </div>
+
+        {/* Chave PIX */}
+        <div>
+          <Label className="text-foreground flex items-center gap-2 mb-2">
+            <QrCode className="h-4 w-4" />
+            Chave PIX
+          </Label>
+          <Input
+            value={formData.pix_key}
+            onChange={(e) => setFormData({ ...formData, pix_key: e.target.value })}
+            className="bg-background border-border text-foreground"
+            placeholder="CPF, e-mail, telefone ou chave aleatória"
+          />
+          <p className="text-muted-foreground text-sm mt-1">
+            Chave para receber pagamentos via PIX
+          </p>
         </div>
 
         {/* Botão Salvar */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote, CreditCard, QrCode, Edit2 } from 'lucide-react';
+import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote, CreditCard, QrCode, Edit2, Copy, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart, generateCartItemKey } from '@/contexts/CartContext';
 import { useSettings } from '@/hooks/useSettings';
@@ -43,6 +43,7 @@ export default function Cart() {
   // Edit mode for saved data
   const [isEditing, setIsEditing] = useState(false);
   const [hasSavedData, setHasSavedData] = useState(false);
+  const [pixCopied, setPixCopied] = useState(false);
 
   // Load saved customer data
   useEffect(() => {
@@ -419,6 +420,44 @@ export default function Cart() {
                 </Label>
               </div>
             </RadioGroup>
+
+            {/* PIX Key Display */}
+            {paymentMethod === 'pix' && settings?.pix_key && (
+              <div className="mt-4 p-4 bg-primary/10 border border-primary/30 rounded-lg space-y-3">
+                <div className="flex items-center gap-2 text-primary font-medium">
+                  <QrCode className="h-5 w-5" />
+                  <span>Chave PIX para pagamento</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-background border border-border rounded-lg p-3 font-mono text-sm text-foreground break-all">
+                    {settings.pix_key}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 flex-shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(settings.pix_key || '');
+                      setPixCopied(true);
+                      toast.success('Chave PIX copiada!');
+                      setTimeout(() => setPixCopied(false), 2000);
+                    }}
+                  >
+                    {pixCopied ? (
+                      <Check className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Copy className="h-5 w-5" />
+                    )}
+                  </Button>
+                </div>
+                
+                <p className="text-sm text-muted-foreground">
+                  📱 Após pagar, envie o comprovante junto com seu pedido no WhatsApp para confirmar.
+                </p>
+              </div>
+            )}
 
             {/* Change Options for Cash */}
             {paymentMethod === 'cash' && (

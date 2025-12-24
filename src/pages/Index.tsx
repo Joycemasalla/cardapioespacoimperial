@@ -93,6 +93,7 @@ export default function Index() {
                   product={product} 
                   onClick={() => handleProductClick(product)}
                   minPrice={getMinPrice(product.id)}
+                  variations={variationsByProductId[product.id]}
                 />
               ))}
             </div>
