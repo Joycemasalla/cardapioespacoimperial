@@ -37,6 +37,9 @@ import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import { CookieConsent } from "./components/CookieConsent";
 
 // Cliente do TanStack Query para gerenciamento de cache
 const queryClient = new QueryClient();
@@ -57,8 +60,13 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/privacidade" element={<PrivacyPolicy />} />
+              <Route path="/termos" element={<TermsOfService />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            
+            {/* Cookie Consent Banner */}
+            <CookieConsent />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>

@@ -3,11 +3,13 @@ import { ArrowLeft, Minus, Plus, Trash2, MessageCircle, MapPin, Store, Banknote,
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart, generateCartItemKey } from '@/contexts/CartContext';
 import { useSettings } from '@/hooks/useSettings';
+import { useCreateOrder } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import OrderPreviewModal from '@/components/OrderPreviewModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
@@ -28,6 +30,7 @@ export default function Cart() {
   const navigate = useNavigate();
   const { items, updateQuantity, removeItem, clearCart, total } = useCart();
   const { data: settings } = useSettings();
+  const createOrder = useCreateOrder();
 
   const [orderType, setOrderType] = useState<OrderType>('delivery');
   const [customerName, setCustomerName] = useState('');
@@ -51,6 +54,9 @@ export default function Cart() {
   const [showPreview, setShowPreview] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  
+  // LGPD consent
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Load saved customer data
   useEffect(() => {
@@ -236,35 +242,61 @@ export default function Cart() {
       return;
     }
 
+    if (!acceptedTerms) {
+      toast.error('Você precisa aceitar a Política de Privacidade');
+      return;
+    }
+
     // Generate order number and show preview
     const newOrderNumber = generateOrderNumber();
     setOrderNumber(newOrderNumber);
     setShowPreview(true);
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     // Save customer data
     saveCustomerData();
 
-    const whatsappNumber = settings?.whatsapp_number || '5511999999999';
-    const message = encodeURIComponent(formatOrderMessage(orderNumber));
+    try {
+      // Salvar pedido no banco de dados
+      const orderTypeMap: Record<OrderType, 'delivery' | 'pickup' | 'table'> = {
+        'delivery': 'delivery',
+        'pickup': 'pickup',
+        'dine_in': 'table'
+      };
 
-    // Usa a API do WhatsApp Web que suporta melhor emojis
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      await createOrder.mutateAsync({
+        customer_name: customerName,
+        customer_phone: customerPhone || '',
+        order_type: orderTypeMap[orderType],
+        address: orderType === 'delivery' ? address : null,
+        address_complement: orderType === 'delivery' ? addressComplement : null,
+        table_number: orderType === 'dine_in' && tableNumber ? parseInt(tableNumber) : null,
+        items: items.map(item => ({
+          product: item.product,
+          variation: item.variation,
+          secondFlavor: item.secondFlavor,
+          quantity: item.quantity
+        })) as any,
+        total: finalTotal,
+        notes: notes || null,
+      });
 
-    let whatsappUrl;
-    if (isMobile) {
-      // WhatsApp app no mobile
-      whatsappUrl = `whatsapp://send?phone=${whatsappNumber}&text=${encodeURIComponent(message)}`;
-    } else {
-      // WhatsApp Web no desktop
-      whatsappUrl = `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${encodeURIComponent(message)}`;
+      // Abrir WhatsApp com a mensagem
+      const whatsappNumber = settings?.whatsapp_number || '5511999999999';
+      const message = formatOrderMessage(orderNumber);
+
+      // Usa wa.me que é mais compatível com emojis
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+      window.open(whatsappUrl, '_blank');
+      setShowPreview(false);
+      clearCart();
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Erro ao salvar pedido:', error);
+      toast.error('Erro ao registrar pedido. Tente novamente.');
     }
-
-    window.open(whatsappUrl, '_blank');
-    setShowPreview(false);
-    clearCart();
-    setShowSuccess(true);
   };
 
   const handleCloseSuccess = () => {
@@ -618,6 +650,26 @@ export default function Cart() {
               placeholder="Alguma observação sobre seu pedido?"
               rows={3}
             />
+          </div>
+
+          {/* LGPD Consent */}
+          <div className="flex items-start gap-3 p-4 bg-muted/50 rounded-lg">
+            <Checkbox 
+              id="lgpd" 
+              checked={acceptedTerms} 
+              onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)} 
+            />
+            <Label htmlFor="lgpd" className="text-sm text-foreground leading-relaxed cursor-pointer">
+              Li e aceito a{' '}
+              <Link to="/privacidade" className="text-primary hover:underline" target="_blank">
+                Política de Privacidade
+              </Link>{' '}
+              e os{' '}
+              <Link to="/termos" className="text-primary hover:underline" target="_blank">
+                Termos de Uso
+              </Link>
+              . Autorizo o uso dos meus dados para processar este pedido.
+            </Label>
           </div>
 
           {/* Total */}
