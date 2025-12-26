@@ -149,78 +149,78 @@ export default function Cart() {
   };
 
   const formatOrderMessage = (orderNum: string) => {
-    const separator = '------------------------';
     const storeName = settings?.store_name || 'Espaco Imperial';
 
-    let message = `*${storeName}*\n`;
-    message += `${separator}\n\n`;
+    let message = '';
+    message += '\u{1F354} *' + storeName + '*\n';
+    message += '------------------------\n\n';
 
-    message += `*PEDIDO #${orderNum}*\n`;
-    message += `${formatDateTime()}\n\n`;
+    message += '\u{1F4CB} *PEDIDO #' + orderNum + '*\n';
+    message += '\u{1F551} ' + formatDateTime() + '\n\n';
 
-    message += `${separator}\n`;
-    message += `*CLIENTE*\n`;
-    message += `${separator}\n`;
-    message += `Nome: ${customerName}\n`;
+    message += '------------------------\n';
+    message += '\u{1F464} *CLIENTE*\n';
+    message += '------------------------\n';
+    message += 'Nome: ' + customerName + '\n';
     if (customerPhone) {
-      message += `WhatsApp: ${customerPhone}\n`;
+      message += 'WhatsApp: ' + customerPhone + '\n';
     }
-    message += `\n`;
+    message += '\n';
 
-    message += `${separator}\n`;
-    message += `*ITENS DO PEDIDO*\n`;
-    message += `${separator}\n`;
+    message += '------------------------\n';
+    message += '\u{1F6D2} *ITENS DO PEDIDO*\n';
+    message += '------------------------\n';
     items.forEach((item) => {
       const price = getItemPrice(item);
       const name = getItemName(item);
-      message += `- ${item.quantity}x ${name}\n`;
-      message += `  R$ ${(price * item.quantity).toFixed(2)}\n`;
+      message += '\u{2022} ' + item.quantity + 'x ' + name + '\n';
+      message += '   R$ ' + (price * item.quantity).toFixed(2) + '\n';
     });
-    message += `\n`;
+    message += '\n';
 
-    message += `${separator}\n`;
+    message += '------------------------\n';
     if (orderType === 'delivery') {
-      message += `*ENTREGA*\n`;
-      message += `${separator}\n`;
-      message += `Endereco: ${address}`;
-      if (addressComplement) message += `\n${addressComplement}`;
-      message += `\n\n`;
+      message += '\u{1F69A} *ENTREGA*\n';
+      message += '------------------------\n';
+      message += '\u{1F4CD} ' + address;
+      if (addressComplement) message += '\n   ' + addressComplement;
+      message += '\n\n';
     } else if (orderType === 'dine_in') {
-      message += `*COMER NO LOCAL*\n`;
-      message += `${separator}\n\n`;
+      message += '\u{1F37D} *COMER NO LOCAL*\n';
+      message += '------------------------\n\n';
     } else {
-      message += `*RETIRADA NO LOCAL*\n`;
-      message += `${separator}\n\n`;
+      message += '\u{1F3EA} *RETIRADA NO LOCAL*\n';
+      message += '------------------------\n\n';
     }
 
-    message += `${separator}\n`;
-    message += `*VALORES*\n`;
-    message += `${separator}\n`;
-    message += `Subtotal: R$ ${total.toFixed(2)}\n`;
+    message += '------------------------\n';
+    message += '\u{1F4B0} *VALORES*\n';
+    message += '------------------------\n';
+    message += 'Subtotal: R$ ' + total.toFixed(2) + '\n';
     if (orderType === 'delivery') {
-      message += `Entrega: R$ ${deliveryFee.toFixed(2)}\n`;
+      message += 'Entrega: R$ ' + deliveryFee.toFixed(2) + '\n';
     }
-    message += `*TOTAL: R$ ${finalTotal.toFixed(2)}*\n\n`;
+    message += '*TOTAL: R$ ' + finalTotal.toFixed(2) + '*\n\n';
 
-    message += `${separator}\n`;
-    message += `*PAGAMENTO*\n`;
-    message += `${separator}\n`;
-    message += `${formatPaymentMethod()}\n`;
+    message += '------------------------\n';
+    message += '\u{1F4B3} *PAGAMENTO*\n';
+    message += '------------------------\n';
+    message += formatPaymentMethod() + '\n';
 
     if (paymentMethod === 'pix') {
-      message += `\n_Envie o comprovante PIX nesta conversa_\n`;
+      message += '\n_Envie o comprovante PIX nesta conversa_\n';
     }
 
     if (notes) {
-      message += `\n${separator}\n`;
-      message += `*OBSERVACOES*\n`;
-      message += `${separator}\n`;
-      message += `${notes}\n`;
+      message += '\n------------------------\n';
+      message += '\u{1F4DD} *OBSERVACOES*\n';
+      message += '------------------------\n';
+      message += notes + '\n';
     }
 
-    message += `\n${separator}\n`;
-    message += `Obrigado pela preferencia!\n`;
-    message += `${separator}`;
+    message += '\n------------------------\n';
+    message += '\u{2728} Obrigado pela preferencia!\n';
+    message += '------------------------';
 
     return message;
   };
