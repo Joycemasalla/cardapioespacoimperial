@@ -18,7 +18,7 @@ export default function OrderPreviewModal({
 }: OrderPreviewModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col gap-4">
         <DialogHeader>
           <DialogTitle className="text-foreground">Confirme seu pedido</DialogTitle>
         </DialogHeader>
@@ -27,13 +27,15 @@ export default function OrderPreviewModal({
           Revise a mensagem que será enviada pelo WhatsApp:
         </p>
         
-        <ScrollArea className="flex-1 max-h-[50vh] border border-border rounded-lg bg-muted/30 p-4">
-          <pre className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
-            {message}
-          </pre>
+        <ScrollArea className="h-[40vh] border border-border rounded-lg bg-muted/30 p-4">
+          <div className="pr-4">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-foreground leading-relaxed">
+              {message}
+            </pre>
+          </div>
         </ScrollArea>
         
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 mt-auto">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
