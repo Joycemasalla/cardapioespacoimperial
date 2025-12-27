@@ -81,17 +81,16 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (order: Omit<Order, 'id' | 'created_at' | 'status'>) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('orders')
         .insert({
           ...order,
           items: order.items as any, // Converte para JSON
-        })
-        .select()
-        .single();
+        });
       
       if (error) throw error;
-      return data;
+      // Não usa .select() pois usuário anônimo não tem permissão de leitura
+      return { success: true };
     },
     onSuccess: () => {
       // Invalida cache para recarregar lista
