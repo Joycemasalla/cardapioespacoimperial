@@ -70,10 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Se tem usuário, verifica se é admin
+        // Se tem usuário, verifica se é admin (deferred para evitar deadlock)
         if (session?.user) {
+          const userId = session.user.id;
           setTimeout(() => {
-            checkAdminRole(session.user.id);
+            checkAdminRole(userId);
           }, 0);
         } else {
           setIsAdmin(false);
