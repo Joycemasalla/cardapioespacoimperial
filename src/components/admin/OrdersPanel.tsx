@@ -3,7 +3,7 @@ import { useOrders, useUpdateOrderStatus } from '@/hooks/useOrders';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Phone, MapPin, Clock, Package, CheckCircle, XCircle, Loader2, ChefHat, Truck } from 'lucide-react';
+import { Phone, MapPin, Clock, Package, CheckCircle, XCircle, Loader2, ChefHat, Truck, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Order } from '@/types';
 import { format } from 'date-fns';
@@ -18,6 +18,15 @@ const statusConfig: Record<OrderStatus, { label: string; color: string; icon: Re
   ready: { label: 'Pronto', color: 'bg-green-500/20 text-green-400 border-green-500/30', icon: <Package className="h-4 w-4" /> },
   delivered: { label: 'Entregue', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: <Truck className="h-4 w-4" /> },
   cancelled: { label: 'Cancelado', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: <XCircle className="h-4 w-4" /> },
+};
+
+const statusMessages: Record<OrderStatus, string> = {
+  pending: 'Seu pedido foi recebido e está aguardando confirmação!',
+  confirmed: 'Seu pedido foi confirmado e logo será preparado!',
+  preparing: 'Seu pedido está sendo preparado com carinho!',
+  ready: 'Seu pedido está pronto! Aguardando retirada/entrega.',
+  delivered: 'Seu pedido foi entregue! Bom apetite!',
+  cancelled: 'Infelizmente seu pedido foi cancelado.',
 };
 
 const orderTypeLabels = {
@@ -42,6 +51,17 @@ export function OrdersPanel() {
     } catch (error) {
       toast.error('Erro ao atualizar status');
     }
+  };
+
+  const handleNotifyCustomer = (order: Order, status: OrderStatus) => {
+    if (!order.customer_phone) {
+      toast.error('Cliente não tem telefone cadastrado');
+      return;
+    }
+
+    const message = `Olá, ${order.customer_name}! 📦\n\n${statusMessages[status]}\n\nPedido: #${order.id.slice(0, 8).toUpperCase()}\n\nObrigado pela preferência!`;
+    const whatsappUrl = `https://wa.me/${order.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   if (isLoading) {
@@ -87,6 +107,7 @@ export function OrdersPanel() {
               key={order.id} 
               order={order} 
               onStatusChange={handleStatusChange}
+              onNotifyCustomer={handleNotifyCustomer}
               isUpdating={updateStatus.isPending}
             />
           ))}
@@ -99,10 +120,11 @@ export function OrdersPanel() {
 interface OrderCardProps {
   order: Order;
   onStatusChange: (orderId: string, status: OrderStatus) => void;
+  onNotifyCustomer: (order: Order, status: OrderStatus) => void;
   isUpdating: boolean;
 }
 
-function OrderCard({ order, onStatusChange, isUpdating }: OrderCardProps) {
+function OrderCard({ order, onStatusChange, onNotifyCustomer, isUpdating }: OrderCardProps) {
   const status = (order.status || 'pending') as OrderStatus;
   const config = statusConfig[status];
   
@@ -158,15 +180,26 @@ function OrderCard({ order, onStatusChange, isUpdating }: OrderCardProps) {
         <p className="text-sm font-medium text-foreground">Itens do Pedido:</p>
         <div className="space-y-1">
           {order.items?.map((item, index) => (
-            <div key={index} className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {item.quantity}x {item.product?.name || 'Produto'}
-                {item.variation && ` (${item.variation.name})`}
-                {item.secondFlavor && ` + ${item.secondFlavor.name}`}
-              </span>
-              <span className="text-foreground font-medium">
-                R$ {((item.variation?.price || item.product?.price || 0) * item.quantity).toFixed(2)}
-              </span>
+            <div key={index} className="text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  {item.quantity}x {item.product?.name || 'Produto'}
+                  {item.variation && ` (${item.variation.name})`}
+                  {item.secondFlavor && ` + ${item.secondFlavor.name}`}
+                </span>
+                <span className="text-foreground font-medium">
+                  R$ {((item.variation?.price || item.product?.price || 0) * item.quantity).toFixed(2)}
+                </span>
+              </div>
+              {/* Show addons if any */}
+              {item.addons && item.addons.length > 0 && (
+                <div className="ml-4 text-xs text-muted-foreground">
+                  + {item.addons.map(a => a.name).join(', ')}
+                  <span className="ml-2">
+                    (+R$ {item.addons.reduce((sum, a) => sum + a.price, 0).toFixed(2)})
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -188,6 +221,19 @@ function OrderCard({ order, onStatusChange, isUpdating }: OrderCardProps) {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          {/* Notify Customer Button */}
+          {order.customer_phone && status !== 'cancelled' && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onNotifyCustomer(order, status)}
+              className="border-green-500/30 text-green-400 hover:bg-green-500/10"
+            >
+              <MessageCircle className="h-4 w-4 mr-1" />
+              Notificar
+            </Button>
+          )}
+
           {status !== 'cancelled' && status !== 'delivered' && (
             <>
               {status === 'pending' && (

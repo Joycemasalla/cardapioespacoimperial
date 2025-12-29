@@ -9,6 +9,7 @@
  * 
  * TIPOS DEFINIDOS:
  * - Category: Categoria de produtos (Pizzas, Bebidas, etc)
+ * - CategoryAddon: Adicional de categoria (Bacon, Queijo extra)
  * - ProductVariation: Variação de produto (tamanhos, sabores)
  * - Product: Produto do cardápio
  * - Promotion: Promoção aplicada a um produto
@@ -30,6 +31,20 @@ export interface Category {
   image_url: string | null;      // URL da imagem (opcional)
   sort_order: number;            // Ordem de exibição
   is_active: boolean;            // Se está visível no cardápio
+  created_at: string;            // Data de criação
+}
+
+/**
+ * Adicional de categoria
+ * Exemplo: "Bacon extra", "Borda recheada"
+ */
+export interface CategoryAddon {
+  id: string;                    // Identificador único
+  category_id: string;           // ID da categoria relacionada
+  name: string;                  // Nome do adicional
+  price: number;                 // Preço do adicional
+  is_active: boolean;            // Se está disponível
+  sort_order: number;            // Ordem de exibição
   created_at: string;            // Data de criação
 }
 
@@ -80,6 +95,15 @@ export interface Promotion {
 }
 
 /**
+ * Adicional selecionado no carrinho
+ */
+export interface SelectedAddon {
+  id: string;
+  name: string;
+  price: number;
+}
+
+/**
  * Item no carrinho de compras
  */
 export interface CartItem {
@@ -88,6 +112,7 @@ export interface CartItem {
   notes?: string;                // Observações (opcional)
   variation?: ProductVariation;  // Variação escolhida (ex: "Grande")
   secondFlavor?: Product;        // Segundo sabor (para pizzas meio-a-meio)
+  addons?: SelectedAddon[];      // Adicionais selecionados
 }
 
 /**
@@ -122,4 +147,8 @@ export interface Settings {
   is_open: boolean;              // Se a loja está aberta
   pix_key: string | null;        // Chave PIX para pagamentos
   updated_at: string;            // Última atualização
+  opening_time?: string;         // Horário de abertura (ex: "18:00")
+  closing_time?: string;         // Horário de fechamento (ex: "23:30")
+  closed_message?: string;       // Mensagem quando fechado
+  maintenance_mode?: boolean;    // Modo manutenção (cardápio sendo atualizado)
 }

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Save, Store, Phone, MapPin, Truck, Clock, QrCode } from 'lucide-react';
+import { Save, Store, Phone, MapPin, Truck, Clock, QrCode, AlertTriangle, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { Settings } from '@/types';
 import { useUpdateSettings } from '@/hooks/useSettings';
@@ -20,6 +21,10 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
     delivery_fee: '',
     is_open: true,
     pix_key: '',
+    opening_time: '18:00',
+    closing_time: '23:30',
+    closed_message: 'Estamos fechados no momento. Volte no nosso horário de funcionamento!',
+    maintenance_mode: false,
   });
 
   const updateSettings = useUpdateSettings();
@@ -33,6 +38,10 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
         delivery_fee: String(settings.delivery_fee || 0),
         is_open: settings.is_open ?? true,
         pix_key: settings.pix_key || '',
+        opening_time: settings.opening_time || '18:00',
+        closing_time: settings.closing_time || '23:30',
+        closed_message: settings.closed_message || 'Estamos fechados no momento. Volte no nosso horário de funcionamento!',
+        maintenance_mode: settings.maintenance_mode ?? false,
       });
     }
   }, [settings]);
@@ -49,6 +58,10 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
         delivery_fee: parseFloat(formData.delivery_fee) || 0,
         is_open: formData.is_open,
         pix_key: formData.pix_key || null,
+        opening_time: formData.opening_time,
+        closing_time: formData.closing_time,
+        closed_message: formData.closed_message,
+        maintenance_mode: formData.maintenance_mode,
       });
       toast.success('Configurações salvas!');
     } catch (error) {
@@ -81,6 +94,72 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
               onCheckedChange={(checked) => setFormData({ ...formData, is_open: checked })}
             />
           </div>
+        </div>
+
+        {/* Modo Manutenção */}
+        <div className="flex items-center justify-between p-4 bg-background rounded-lg border border-border">
+          <div className="flex items-center gap-3">
+            <Wrench className="h-5 w-5 text-amber-500" />
+            <div>
+              <Label className="text-foreground font-medium">Modo Manutenção</Label>
+              <p className="text-muted-foreground text-sm">Exibe aviso de "cardápio sendo atualizado"</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-medium ${formData.maintenance_mode ? 'text-amber-500' : 'text-muted-foreground'}`}>
+              {formData.maintenance_mode ? 'Ativo' : 'Inativo'}
+            </span>
+            <Switch
+              checked={formData.maintenance_mode}
+              onCheckedChange={(checked) => setFormData({ ...formData, maintenance_mode: checked })}
+            />
+          </div>
+        </div>
+
+        {/* Horário de Funcionamento */}
+        <div className="border border-border rounded-lg p-4 space-y-4">
+          <Label className="text-foreground font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Horário de Funcionamento
+          </Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-muted-foreground text-sm">Abertura</Label>
+              <Input
+                type="time"
+                value={formData.opening_time}
+                onChange={(e) => setFormData({ ...formData, opening_time: e.target.value })}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+            <div>
+              <Label className="text-muted-foreground text-sm">Fechamento</Label>
+              <Input
+                type="time"
+                value={formData.closing_time}
+                onChange={(e) => setFormData({ ...formData, closing_time: e.target.value })}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            O sistema verificará automaticamente se está dentro do horário de funcionamento.
+          </p>
+        </div>
+
+        {/* Mensagem de Fechado */}
+        <div>
+          <Label className="text-foreground flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4" />
+            Mensagem quando Fechado
+          </Label>
+          <Textarea
+            value={formData.closed_message}
+            onChange={(e) => setFormData({ ...formData, closed_message: e.target.value })}
+            className="bg-background border-border text-foreground resize-none"
+            rows={2}
+            placeholder="Mensagem exibida quando a loja está fechada..."
+          />
         </div>
 
         {/* Nome da Loja */}

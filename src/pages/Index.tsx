@@ -9,11 +9,15 @@ import { Footer } from '@/components/Footer';
 import { WhatsAppFloatingButton } from '@/components/WhatsAppFloatingButton';
 import { CartButton } from '@/components/CartButton';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { StoreClosedOverlay } from '@/components/StoreClosedOverlay';
 import { useCategories } from '@/hooks/useCategories';
 import { useProducts } from '@/hooks/useProducts';
 import { useAllProductVariations } from '@/hooks/useProductVariations';
+import { useSettings } from '@/hooks/useSettings';
 import { Product, ProductVariation } from '@/types';
+
 export default function Index() {
+  const { data: settings } = useSettings();
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const {
@@ -51,6 +55,7 @@ export default function Index() {
     setSelectedProduct(product);
   };
   return <div className="min-h-screen bg-background flex flex-col">
+      <StoreClosedOverlay settings={settings || null} />
       <Header onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
       
       <HeroBanner />

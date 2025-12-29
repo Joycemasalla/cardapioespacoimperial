@@ -44,6 +44,44 @@ export type Database = {
         }
         Relationships: []
       }
+      category_addons: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          sort_order: number | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number
+          sort_order?: number | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_addons_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           address: string | null
@@ -232,9 +270,13 @@ export type Database = {
       }
       settings: {
         Row: {
+          closed_message: string | null
+          closing_time: string | null
           delivery_fee: number | null
           id: string
           is_open: boolean | null
+          maintenance_mode: boolean | null
+          opening_time: string | null
           pix_key: string | null
           store_address: string | null
           store_name: string | null
@@ -242,9 +284,13 @@ export type Database = {
           whatsapp_number: string
         }
         Insert: {
+          closed_message?: string | null
+          closing_time?: string | null
           delivery_fee?: number | null
           id?: string
           is_open?: boolean | null
+          maintenance_mode?: boolean | null
+          opening_time?: string | null
           pix_key?: string | null
           store_address?: string | null
           store_name?: string | null
@@ -252,9 +298,13 @@ export type Database = {
           whatsapp_number: string
         }
         Update: {
+          closed_message?: string | null
+          closing_time?: string | null
           delivery_fee?: number | null
           id?: string
           is_open?: boolean | null
+          maintenance_mode?: boolean | null
+          opening_time?: string | null
           pix_key?: string | null
           store_address?: string | null
           store_name?: string | null

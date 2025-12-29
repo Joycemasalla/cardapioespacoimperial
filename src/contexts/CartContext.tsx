@@ -29,12 +29,12 @@
  */
 
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { CartItem, Product, ProductVariation } from '@/types';
+import { CartItem, Product, ProductVariation, SelectedAddon } from '@/types';
 
 // Tipos do contexto
 interface CartContextType {
   items: CartItem[];                    // Lista de itens no carrinho
-  addItem: (product: Product, quantity?: number, notes?: string, variation?: ProductVariation, secondFlavor?: Product) => void;
+  addItem: (product: Product, quantity?: number, notes?: string, variation?: ProductVariation, secondFlavor?: Product, addons?: SelectedAddon[]) => void;
   removeItem: (cartItemKey: string) => void;
   updateQuantity: (cartItemKey: string, quantity: number) => void;
   clearCart: () => void;
@@ -47,12 +47,15 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 /**
  * Gera uma chave única para cada item do carrinho
- * Considera: produto + variação + segundo sabor
+ * Considera: produto + variação + segundo sabor + adicionais
  */
-export const generateCartItemKey = (product: Product, variation?: ProductVariation, secondFlavor?: Product) => {
+export const generateCartItemKey = (product: Product, variation?: ProductVariation, secondFlavor?: Product, addons?: SelectedAddon[]) => {
   let key = product.id;
   if (variation) key += `-${variation.id}`;
   if (secondFlavor) key += `-${secondFlavor.id}`;
+  if (addons && addons.length > 0) {
+    key += `-${addons.map(a => a.id).sort().join('-')}`;
+  }
   return key;
 };
 
@@ -68,24 +71,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * Adiciona um produto ao carrinho
    * Se já existir, incrementa a quantidade
    */
-  const addItem = (product: Product, quantity = 1, notes?: string, variation?: ProductVariation, secondFlavor?: Product) => {
+  const addItem = (product: Product, quantity = 1, notes?: string, variation?: ProductVariation, secondFlavor?: Product, addons?: SelectedAddon[]) => {
     setItems((prev) => {
-      const key = generateCartItemKey(product, variation, secondFlavor);
+      const key = generateCartItemKey(product, variation, secondFlavor, addons);
       const existing = prev.find((item) => 
-        generateCartItemKey(item.product, item.variation, item.secondFlavor) === key
+        generateCartItemKey(item.product, item.variation, item.secondFlavor, item.addons) === key
       );
       
       // Se já existe, incrementa quantidade
       if (existing) {
         return prev.map((item) =>
-          generateCartItemKey(item.product, item.variation, item.secondFlavor) === key
+          generateCartItemKey(item.product, item.variation, item.secondFlavor, item.addons) === key
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
       
       // Senão, adiciona novo item
-      return [...prev, { product, quantity, notes, variation, secondFlavor }];
+      return [...prev, { product, quantity, notes, variation, secondFlavor, addons }];
     });
   };
 
@@ -94,7 +97,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const removeItem = (cartItemKey: string) => {
     setItems((prev) => prev.filter((item) => 
-      generateCartItemKey(item.product, item.variation, item.secondFlavor) !== cartItemKey
+      generateCartItemKey(item.product, item.variation, item.secondFlavor, item.addons) !== cartItemKey
     ));
   };
 
@@ -109,7 +112,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     setItems((prev) =>
       prev.map((item) =>
-        generateCartItemKey(item.product, item.variation, item.secondFlavor) === cartItemKey 
+        generateCartItemKey(item.product, item.variation, item.secondFlavor, item.addons) === cartItemKey 
           ? { ...item, quantity } 
           : item
       )
@@ -125,20 +128,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * Calcula o preço de um item considerando:
    * - Variação (se tiver)
    * - Promoção (se tiver)
+   * - Adicionais (se tiver)
    */
   const getItemPrice = (item: CartItem) => {
+    let basePrice = 0;
+    
     // Se tem variação, usa preço da variação
     if (item.variation) {
-      return item.variation.price;
+      basePrice = item.variation.price;
+    } else {
+      // Senão, usa preço do produto (com desconto se houver promoção)
+      const product = item.product;
+      if (product.promotion && product.promotion.is_active) {
+        const discount = product.promotion.discount_percent / 100;
+        basePrice = product.price * (1 - discount);
+      } else {
+        basePrice = product.price;
+      }
+    }
+
+    // Adiciona preço dos adicionais
+    if (item.addons && item.addons.length > 0) {
+      basePrice += item.addons.reduce((sum, addon) => sum + addon.price, 0);
     }
     
-    // Senão, usa preço do produto (com desconto se houver promoção)
-    const product = item.product;
-    if (product.promotion && product.promotion.is_active) {
-      const discount = product.promotion.discount_percent / 100;
-      return product.price * (1 - discount);
-    }
-    return product.price;
+    return basePrice;
   };
 
   // Calcula o total do carrinho

@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { X, Plus, Minus, ChevronDown } from 'lucide-react';
-import { Product, ProductVariation } from '@/types';
+import { Product, ProductVariation, SelectedAddon } from '@/types';
 import { useCart } from '@/contexts/CartContext';
 import { useProducts } from '@/hooks/useProducts';
+import { useCategoryAddons } from '@/hooks/useCategoryAddons';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -36,6 +38,10 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
   const [isHalfHalf, setIsHalfHalf] = useState(false);
   const [secondFlavor, setSecondFlavor] = useState<Product | undefined>();
   const [secondFlavorOpen, setSecondFlavorOpen] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
+
+  // Get addons for this product's category
+  const { data: categoryAddons } = useCategoryAddons(product.category_id || undefined);
 
   // Get pizzas for half-and-half selection
   const { data: allProducts } = useProducts();
@@ -65,18 +71,41 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
     return product.price;
   }, [selectedVariation, hasPromotion, product]);
 
+  // Calculate addons total
+  const addonsTotal = useMemo(() => {
+    return selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+  }, [selectedAddons]);
+
   // For half-and-half, use the higher price between the two flavors
   const finalPrice = useMemo(() => {
+    let basePrice = currentPrice;
     if (isHalfHalf && secondFlavor && selectedVariation) {
       // Find the variation for the second flavor
       const secondFlavorPrice = selectedVariation.price; // Assume same size
-      return Math.max(currentPrice, secondFlavorPrice);
+      basePrice = Math.max(currentPrice, secondFlavorPrice);
     }
-    return currentPrice;
-  }, [isHalfHalf, secondFlavor, selectedVariation, currentPrice]);
+    return basePrice + addonsTotal;
+  }, [isHalfHalf, secondFlavor, selectedVariation, currentPrice, addonsTotal]);
+
+  const handleToggleAddon = (addon: { id: string; name: string; price: number }) => {
+    setSelectedAddons(prev => {
+      const exists = prev.find(a => a.id === addon.id);
+      if (exists) {
+        return prev.filter(a => a.id !== addon.id);
+      }
+      return [...prev, { id: addon.id, name: addon.name, price: addon.price }];
+    });
+  };
 
   const handleAddToCart = () => {
-    addItem(product, quantity, undefined, selectedVariation, isHalfHalf ? secondFlavor : undefined);
+    addItem(
+      product, 
+      quantity, 
+      undefined, 
+      selectedVariation, 
+      isHalfHalf ? secondFlavor : undefined,
+      selectedAddons.length > 0 ? selectedAddons : undefined
+    );
     
     let message = `${product.name}`;
     if (selectedVariation) {
@@ -85,6 +114,9 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
     if (isHalfHalf && secondFlavor) {
       message += ` + ${secondFlavor.name}`;
     }
+    if (selectedAddons.length > 0) {
+      message += ` com ${selectedAddons.length} adicional(is)`;
+    }
     message += ` adicionado ao carrinho!`;
     
     toast.success(message);
@@ -92,6 +124,7 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
     setQuantity(1);
     setIsHalfHalf(false);
     setSecondFlavor(undefined);
+    setSelectedAddons([]);
   };
 
   return (
@@ -104,6 +137,7 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
               src={product.image_url} 
               alt={product.name}
               className="w-full h-full object-cover"
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
@@ -204,6 +238,37 @@ export function ProductDetailModal({ product, variations, isOpen, onClose }: Pro
                   </CollapsibleContent>
                 </Collapsible>
               )}
+            </div>
+          )}
+
+          {/* Addons Section */}
+          {categoryAddons && categoryAddons.length > 0 && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <Label className="text-base font-semibold">🧀 Adicionais</Label>
+              <div className="space-y-2">
+                {categoryAddons.map((addon) => (
+                  <div 
+                    key={addon.id} 
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
+                      selectedAddons.find(a => a.id === addon.id)
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                    onClick={() => handleToggleAddon(addon)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox 
+                        checked={!!selectedAddons.find(a => a.id === addon.id)}
+                        onCheckedChange={() => handleToggleAddon(addon)}
+                      />
+                      <span className="font-medium">{addon.name}</span>
+                    </div>
+                    <span className="text-primary font-bold">
+                      +R$ {addon.price.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
