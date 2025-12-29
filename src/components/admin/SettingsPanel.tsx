@@ -8,6 +8,7 @@ import { Save, Store, Phone, MapPin, Truck, Clock, QrCode, AlertTriangle, Wrench
 import { toast } from 'sonner';
 import { Settings } from '@/types';
 import { useUpdateSettings } from '@/hooks/useSettings';
+import { SettingsSchema, safeParseFloat, getValidationErrors } from '@/lib/validations';
 
 interface SettingsPanelProps {
   settings: Settings | null;
@@ -49,19 +50,39 @@ export function SettingsPanel({ settings }: SettingsPanelProps) {
   const handleSave = async () => {
     if (!settings) return;
     
+    // Validar dados antes de salvar
+    const dataToValidate = {
+      whatsapp_number: formData.whatsapp_number.trim(),
+      store_name: formData.store_name.trim() || '',
+      store_address: formData.store_address.trim() || '',
+      delivery_fee: safeParseFloat(formData.delivery_fee),
+      is_open: formData.is_open,
+      pix_key: formData.pix_key.trim() || '',
+      opening_time: formData.opening_time,
+      closing_time: formData.closing_time,
+      closed_message: formData.closed_message.trim() || '',
+      maintenance_mode: formData.maintenance_mode,
+    };
+
+    const errors = getValidationErrors(SettingsSchema, dataToValidate);
+    if (errors) {
+      errors.forEach(err => toast.error(err));
+      return;
+    }
+    
     try {
       await updateSettings.mutateAsync({
         id: settings.id,
-        whatsapp_number: formData.whatsapp_number,
-        store_name: formData.store_name || null,
-        store_address: formData.store_address || null,
-        delivery_fee: parseFloat(formData.delivery_fee) || 0,
-        is_open: formData.is_open,
-        pix_key: formData.pix_key || null,
-        opening_time: formData.opening_time,
-        closing_time: formData.closing_time,
-        closed_message: formData.closed_message,
-        maintenance_mode: formData.maintenance_mode,
+        whatsapp_number: dataToValidate.whatsapp_number,
+        store_name: dataToValidate.store_name || null,
+        store_address: dataToValidate.store_address || null,
+        delivery_fee: dataToValidate.delivery_fee,
+        is_open: dataToValidate.is_open,
+        pix_key: dataToValidate.pix_key || null,
+        opening_time: dataToValidate.opening_time,
+        closing_time: dataToValidate.closing_time,
+        closed_message: dataToValidate.closed_message,
+        maintenance_mode: dataToValidate.maintenance_mode,
       });
       toast.success('Configurações salvas!');
     } catch (error) {

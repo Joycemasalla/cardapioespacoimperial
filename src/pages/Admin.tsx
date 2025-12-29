@@ -19,6 +19,7 @@ import { CategoryEditModal } from '@/components/admin/CategoryEditModal';
 import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { OrdersPanel } from '@/components/admin/OrdersPanel';
 import { FirstAdminOnboarding } from '@/components/admin/FirstAdminOnboarding';
+import { ProductSchema, CategorySchema, safeParseFloat, getValidationErrors } from '@/lib/validations';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -49,23 +50,49 @@ export default function Admin() {
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return toast.error('Preencha nome e preço');
-    await createProduct.mutateAsync({
-      name: newProduct.name,
-      price: parseFloat(newProduct.price),
-      description: newProduct.description || null,
+    
+    // Validar dados do produto
+    const productData = {
+      name: newProduct.name.trim(),
+      price: safeParseFloat(newProduct.price),
+      description: newProduct.description.trim() || null,
       category_id: newProduct.category_id || null,
-      image_url: newProduct.image_url || null,
+      image_url: newProduct.image_url.trim() || null,
       is_active: true,
       is_featured: false,
-    });
+    };
+
+    const errors = getValidationErrors(ProductSchema, productData);
+    if (errors) {
+      errors.forEach(err => toast.error(err));
+      return;
+    }
+
+    await createProduct.mutateAsync(productData);
     setNewProduct({ name: '', price: '', description: '', category_id: '', image_url: '' });
     setAddProductOpen(false);
     toast.success('Produto adicionado!');
   };
 
   const handleAddCategory = async () => {
-    if (!newCategory) return;
-    await createCategory.mutateAsync({ name: newCategory, description: null, image_url: null, sort_order: 0, is_active: true });
+    if (!newCategory.trim()) return;
+    
+    // Validar dados da categoria
+    const categoryData = {
+      name: newCategory.trim(),
+      description: null,
+      image_url: null,
+      sort_order: 0,
+      is_active: true,
+    };
+
+    const errors = getValidationErrors(CategorySchema, categoryData);
+    if (errors) {
+      errors.forEach(err => toast.error(err));
+      return;
+    }
+
+    await createCategory.mutateAsync(categoryData);
     setNewCategory('');
     toast.success('Categoria adicionada!');
   };

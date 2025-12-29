@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import OrderPreviewModal from '@/components/OrderPreviewModal';
 import OrderSuccessModal from '@/components/OrderSuccessModal';
+import { OrderSchema, safeParseInt, getValidationErrors } from '@/lib/validations';
 
 type OrderType = 'delivery' | 'pickup' | 'dine_in';
 type PaymentMethod = 'cash' | 'pix' | 'card';
@@ -266,21 +267,32 @@ export default function Cart() {
         'dine_in': 'table'
       };
 
-      await createOrder.mutateAsync({
-        customer_name: customerName,
-        customer_phone: customerPhone || '',
+      // Validar dados do pedido antes de enviar
+      const orderData = {
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim() || '',
         order_type: orderTypeMap[orderType],
-        address: orderType === 'delivery' ? address : null,
-        address_complement: orderType === 'delivery' ? addressComplement : null,
-        table_number: orderType === 'dine_in' && tableNumber ? parseInt(tableNumber) : null,
+        address: orderType === 'delivery' ? address.trim() : null,
+        address_complement: orderType === 'delivery' ? addressComplement.trim() : null,
+        table_number: orderType === 'dine_in' && tableNumber ? safeParseInt(tableNumber) : null,
+        total: finalTotal,
+        notes: notes.trim() || null,
+      };
+
+      const errors = getValidationErrors(OrderSchema, orderData);
+      if (errors) {
+        errors.forEach(err => toast.error(err));
+        return;
+      }
+
+      await createOrder.mutateAsync({
+        ...orderData,
         items: items.map(item => ({
           product: item.product,
           variation: item.variation,
           secondFlavor: item.secondFlavor,
           quantity: item.quantity
         })) as any,
-        total: finalTotal,
-        notes: notes || null,
       });
 
       // Abrir WhatsApp com a mensagem
@@ -295,7 +307,6 @@ export default function Cart() {
       clearCart();
       setShowSuccess(true);
     } catch (error) {
-      console.error('Erro ao salvar pedido:', error);
       toast.error('Erro ao registrar pedido. Tente novamente.');
     }
   };
