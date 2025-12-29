@@ -1,8 +1,8 @@
 -- ====================================================================
--- BACKUP MASTER - CARDÁPIO ESPAÇO IMPERIAL (ESTRUTURA + DADOS REAIS)
+-- BACKUP MASTER V3 - SINCRONIZADO COM CSVs (DADOS REAIS + ESTRUTURA)
 -- ====================================================================
 
--- 1. LIMPEZA TOTAL (Começar do zero para evitar conflitos)
+-- 1. LIMPEZA TOTAL (Necessário para garantir que a estrutura seja idêntica aos CSVs)
 DROP SCHEMA public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres;
@@ -11,7 +11,7 @@ GRANT ALL ON SCHEMA public TO authenticated;
 GRANT ALL ON SCHEMA public TO service_role;
 
 -- ====================================================================
--- PARTE 1: ESTRUTURA DO BANCO (Tabelas e Tipos)
+-- PARTE 1: ESTRUTURA DO BANCO
 -- ====================================================================
 
 -- Tipos (Enums)
@@ -19,7 +19,7 @@ CREATE TYPE public.app_role AS ENUM ('admin', 'user');
 CREATE TYPE public.order_status AS ENUM ('pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled');
 CREATE TYPE public.order_type AS ENUM ('delivery', 'pickup', 'table');
 
--- Tabelas
+-- Tabela: Categorias [cite: 28]
 CREATE TABLE public.categories (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -30,18 +30,36 @@ CREATE TABLE public.categories (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Tabela: Configurações (Atualizada com campos do CSV [cite: 1])
+CREATE TABLE public.settings (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  store_name TEXT DEFAULT 'Espaço Imperial',
+  whatsapp_number TEXT NOT NULL,
+  delivery_fee NUMERIC DEFAULT 0,
+  is_open BOOLEAN DEFAULT true,
+  store_address TEXT,
+  pix_key TEXT,
+  opening_time TEXT,
+  closing_time TEXT,
+  closed_message TEXT,
+  maintenance_mode BOOLEAN DEFAULT false,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela: Produtos [cite: 8]
 CREATE TABLE public.products (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
   price NUMERIC NOT NULL,
   image_url TEXT,
-  category_id UUID REFERENCES public.categories(id),
+  category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL,
   is_active BOOLEAN DEFAULT true,
   is_featured BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Tabela: Variações de Produto [cite: 4]
 CREATE TABLE public.product_variations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
@@ -52,6 +70,20 @@ CREATE TABLE public.product_variations (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Tabela: Adicionais por Categoria [cite: 2]
+CREATE TABLE public.category_addons (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  category_id UUID REFERENCES public.categories(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  max_quantity INTEGER DEFAULT 1, -- Campo padrão
+  sort_order INTEGER DEFAULT 0,   -- Adicionado conforme CSV
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Tabela: Promoções [cite: 7]
 CREATE TABLE public.promotions (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   product_id UUID REFERENCES public.products(id) ON DELETE CASCADE,
@@ -62,17 +94,7 @@ CREATE TABLE public.promotions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE TABLE public.settings (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  store_name TEXT DEFAULT 'Espaço Imperial',
-  whatsapp_number TEXT NOT NULL,
-  delivery_fee NUMERIC DEFAULT 0,
-  is_open BOOLEAN DEFAULT true,
-  store_address TEXT,
-  pix_key TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
+-- Tabela: Pedidos [cite: 27]
 CREATE TABLE public.orders (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   customer_name TEXT NOT NULL,
@@ -88,6 +110,7 @@ CREATE TABLE public.orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Tabela: Perfis [cite: 3]
 CREATE TABLE public.profiles (
   id UUID NOT NULL PRIMARY KEY,
   full_name TEXT,
@@ -95,6 +118,7 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Tabela: Roles [cite: 6]
 CREATE TABLE public.user_roles (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID NOT NULL,
@@ -103,15 +127,16 @@ CREATE TABLE public.user_roles (
 );
 
 -- ====================================================================
--- PARTE 2: SEGURANÇA E FUNÇÕES
+-- PARTE 2: SEGURANÇA (Para evitar o erro 42501)
 -- ====================================================================
 
--- Funções Auxiliares
+-- Função Auxiliar
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
 $$;
 
+-- Trigger de Perfil
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -119,83 +144,80 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- Permissões Gerais
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
 
--- Habilitar RLS (Segurança)
+-- RLS (Habilitando em TUDO)
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_variations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.category_addons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.promotions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
--- Políticas de Acesso
-CREATE POLICY "Anyone can view active categories" ON public.categories FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins can manage categories" ON public.categories FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- Policies (Regras de quem pode ver/editar)
+CREATE POLICY "Public view active categories" ON public.categories FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins manage categories" ON public.categories FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Anyone can view active products" ON public.products FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins can manage products" ON public.products FOR ALL USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Public view active products" ON public.products FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins manage products" ON public.products FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Anyone can view active variations" ON public.product_variations FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins can manage variations" ON public.product_variations FOR ALL USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Public view variations" ON public.product_variations FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins manage variations" ON public.product_variations FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Anyone can view active promotions" ON public.promotions FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins can manage promotions" ON public.promotions FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- POLICY PARA CATEGORY_ADDONS (A que estava faltando/dando erro)
+CREATE POLICY "Public view addons" ON public.category_addons FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins manage addons" ON public.category_addons FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Anyone can view settings" ON public.settings FOR SELECT USING (true);
-CREATE POLICY "Admins can update settings" ON public.settings FOR ALL USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Public view promotions" ON public.promotions FOR SELECT USING (is_active = true);
+CREATE POLICY "Admins manage promotions" ON public.promotions FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Anyone can create orders" ON public.orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can view all orders" ON public.orders FOR SELECT USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can update orders" ON public.orders FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Public view settings" ON public.settings FOR SELECT USING (true);
+CREATE POLICY "Admins update settings" ON public.settings FOR ALL USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Public create orders" ON public.orders FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins view orders" ON public.orders FOR SELECT USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins update orders" ON public.orders FOR UPDATE USING (has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Users can view own roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users manage profile" ON public.profiles FOR ALL USING (auth.uid() = id);
+CREATE POLICY "Users view roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
 
--- Storage (Imagens)
+-- Storage
 INSERT INTO storage.buckets (id, name, public) VALUES ('images', 'images', true) ON CONFLICT (id) DO NOTHING;
-CREATE POLICY "Public can view images" ON storage.objects FOR SELECT USING (bucket_id = 'images');
-CREATE POLICY "Admins can upload images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete images" ON storage.objects FOR DELETE USING (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
-
--- CORREÇÃO DE PERMISSÕES (IMPORTANTE: Resolve o erro 42501)
-GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres, anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres, anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO postgres, anon, authenticated, service_role;
+CREATE POLICY "Public view images" ON storage.objects FOR SELECT USING (bucket_id = 'images');
+CREATE POLICY "Admins upload images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins delete images" ON storage.objects FOR DELETE USING (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
 
 -- ====================================================================
--- PARTE 3: DADOS REAIS (Inserção de Conteúdo)
+-- PARTE 3: DADOS REAIS (Copiados dos seus CSVs)
 -- ====================================================================
 
--- Configurações Iniciais
-INSERT INTO public.settings (store_name, whatsapp_number, delivery_fee, is_open)
-VALUES ('Espaço Imperial', '5532988949994', 2.00, true);
+-- 1. SETTINGS [cite: 1]
+INSERT INTO public.settings (id, whatsapp_number, store_name, delivery_fee, is_open, updated_at, opening_time, closing_time, closed_message, maintenance_mode)
+VALUES ('775de86f-059b-4637-9200-74b19bd49bd2', '5532988949994', 'Espaço Imperial', 2.00, true, '2025-12-24 01:27:49.112+00', '09:00', '23:30', 'Estamos fechados no momento. Volte no nosso horário de funcionamento!', false);
 
--- Categorias (Estrutura Fixa)
-INSERT INTO public.categories (id, name, sort_order, is_active) VALUES
-  ('2b60edd5-84e9-423e-9721-33d8d5ca6adf', 'Hambúrgueres Tradicionais', 1, true),
-  ('59bf2723-57bc-48cd-a8e6-7aa66036f9b6', 'Hambúrgueres Artesanais', 2, true),
-  ('849ef7e2-6b1b-4f63-a5b6-36ff82975e4a', 'Porções', 3, true),
-  ('27a1e7a7-155b-4fb3-ac2d-56f56cfde527', 'Pizzas', 4, true),
-  ('8a256cf8-1f4b-4ef9-96fa-e1696366c976', 'Pizzas Doces', 5, true),
-  ('87d8df86-39f5-47ac-9015-6ba3ee2ff3cc', 'Bebidas', 6, true),
-  ('f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Churrasco', 7, true),
-  ('a4891230-1f51-4291-896a-9c0d5a20bb02', 'Chapas', 8, true),
-  ('6c09d0c8-0f10-41ad-87e8-2bec45f6ba82', 'Combos', 9, true);
+-- 2. CATEGORIES [cite: 28]
+INSERT INTO public.categories (id, name, sort_order, is_active, created_at) VALUES
+('59bf2723-57bc-48cd-a8e6-7aa66036f9b6', 'Hambúrgueres Artesanais', 2, true, '2025-12-24 12:47:55.079+00'),
+('849ef7e2-6b1b-4f63-a5b6-36ff82975e4a', 'Porções', 3, true, '2025-12-24 12:47:55.079+00'),
+('27a1e7a7-155b-4fb3-ac2d-56f56cfde527', 'Pizzas', 4, true, '2025-12-24 12:47:55.079+00'),
+('8a256cf8-1f4b-4ef9-96fa-e1696366c976', 'Pizzas Doces', 5, true, '2025-12-24 12:47:55.079+00'),
+('87d8df86-39f5-47ac-9015-6ba3ee2ff3cc', 'Bebidas', 6, true, '2025-12-24 12:47:55.079+00'),
+('f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Churrasco', 7, true, '2025-12-24 12:47:55.079+00'),
+('a4891230-1f51-4291-896a-9c0d5a20bb02', 'Chapas', 8, true, '2025-12-24 12:47:55.079+00'),
+('6c09d0c8-0f10-41ad-87e8-2bec45f6ba82', 'Combos', 9, true, '2025-12-24 12:47:55.079+00'),
+('2b60edd5-84e9-423e-9721-33d8d5ca6adf', 'Hambúrgueres Tradicionais', 1, true, '2025-12-24 12:47:55.079+00');
 
--- Produtos (Dados do seu backup CSV)
+-- 3. PRODUCTS [cite: 8]
 INSERT INTO public.products (id, category_id, name, description, price, image_url, is_active, is_featured, created_at) VALUES
 ('51f12e60-68df-42fd-b9fb-9080fd453af8', '59bf2723-57bc-48cd-a8e6-7aa66036f9b6', 'Cheddar MC Melt', 'Pão brioche, bife artesanal de boi (120g), cheddar, cebola caramelizada.', 14.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1751990068/cardapio-digital-images/kbukfzahedlithi28vdq.jpg', true, false, '2025-12-24 14:12:49.783+00'),
 ('ac898890-8386-4fcd-9784-8aba38ca16a2', '59bf2723-57bc-48cd-a8e6-7aa66036f9b6', 'Super Rei Bacon', 'Pão brioche, 2 bife artesanal de boi (120g), 2 fatias de cheddar, bacon, tomate, cebola caramelizada e molho especial.', 20.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1753883340/cardapio-digital-images/u2h1yxwnzjroekhvaatc.jpg', true, false, '2025-12-24 14:12:49.783+00'),
@@ -268,7 +290,7 @@ INSERT INTO public.products (id, category_id, name, description, price, image_ur
 ('d26b098d-f971-4cfc-a734-d85b36ae8fe7', '849ef7e2-6b1b-4f63-a5b6-36ff82975e4a', 'Picanha (Porção)', 'Generosa porção de picanha grelhada.', 80.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1752194714/cardapio-digital-images/wmzquc5gnsfsvtzwg091.jpg', true, false, '2025-12-24 14:13:39.109+00'),
 ('57203953-afeb-4675-aea6-5e5869233a37', '27a1e7a7-155b-4fb3-ac2d-56f56cfde527', 'Pizza Calabresa', 'Calabresa, muçarela, cebola, azeitona e orégano.', 30.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1753883504/cardapio-digital-images/st4bgqj41fhwa23t25o8.jpg', true, false, '2025-12-24 14:15:20.208+00'),
 ('aaac74a2-b16b-452a-91cf-def72d932500', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Picanha (100g)', 'Corte nobre de carne, ideal para churrasco, acompanhada de farofa.', 16.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1751898799/cardapio-digital-images/ulsohgajmesaj3x0y2yo.jpg', true, false, '2025-12-24 14:12:04.058+00'),
-('c5581b8d-83a3-4add-8244-f3acb8b4a749', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Contra Filé (100g)', 'Corte clássico, suculento e cheio de sabor, acompanhada de farofa.', 12.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1751898924/cardapio-digital-images/zgfvutvswyvjtvhke43n.jpg', true, false, '2025-12-24 14:12:04.058+00'),
+('c5581b8d-83a3-4add-8244-f3acb8b4a749', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Contra Filé (100g)', 'Corte clássico, suculento e cheio de sabor, acompanhado de farofa.', 12.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1751898924/cardapio-digital-images/zgfvutvswyvjtvhke43n.jpg', true, false, '2025-12-24 14:12:04.058+00'),
 ('767a6b83-cc7d-48f4-9d2a-8a6e4cc8d8ff', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Alcatra (100g)', 'Carne macia e saborosa, perfeita para o seu churrasco, acompanhada de farofa.', 12.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1751898878/cardapio-digital-images/pkwwbvq3u1sobsgvhyzv.jpg', true, false, '2025-12-24 14:12:04.058+00'),
 ('13a7ecdd-6bde-4faf-b746-64c766f8bfb9', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Pernil de Porco (100g)', 'Delicioso pernil de porco, macio e bem temperado, acompanhado de farofa.', 7.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1753213919/cardapio-digital-images/yjmt0uq7ujj8mhlkw5il.jpg', true, false, '2025-12-24 14:12:04.058+00'),
 ('5658d5a6-d929-4982-a43b-1dd2c498f6dc', 'f9c1f552-6165-4426-8b2a-f63f489f5bc6', 'Linguiça (Unid)', 'Linguiça suculenta, perfeita para acompanhar, acompanhada de farofa.', 5.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1756577398/cardapio-digital-images/whkc64upshzximitwxwu.jpg', true, false, '2025-12-24 14:12:04.058+00'),
@@ -296,7 +318,7 @@ INSERT INTO public.products (id, category_id, name, description, price, image_ur
 ('9d30f96f-89a3-4151-8e6f-e5aec5d05ec8', '27a1e7a7-155b-4fb3-ac2d-56f56cfde527', 'Pizza Lombo', 'Muçarela, lombo canadense, catupiry azeitona e orégano.', 30.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1755381793/cardapio-digital-images/kc1ohablbqsivxeo9kyw.jpg', true, false, '2025-12-24 14:15:20.208+00'),
 ('ba3b575c-1957-413d-bc39-b9bcd6a2e90c', '27a1e7a7-155b-4fb3-ac2d-56f56cfde527', 'Pizza Palmito', 'Muçarela, palmito, catupiry azeitona e orégano.', 30.00, 'https://res.cloudinary.com/dbes24whl/image/upload/v1753214077/cardapio-digital-images/yw3mqyqtcdmevqcgzxuo.jpg', true, false, '2025-12-24 14:15:20.208+00');
 
--- Variações (Dados do seu backup CSV)
+-- 4. VARIATIONS [cite: 4]
 INSERT INTO public.product_variations (id, product_id, name, price, sort_order, is_active, created_at) VALUES
 ('04e5f287-47a6-412f-9aed-46c1b4781784', '57203953-afeb-4675-aea6-5e5869233a37', 'Pequena', 30, 1, true, '2025-12-24 14:26:15.959+00'),
 ('39cd8d91-3300-4d77-a073-f01f7402c811', '57203953-afeb-4675-aea6-5e5869233a37', 'Média', 35, 2, true, '2025-12-24 14:26:15.959+00'),
@@ -368,4 +390,12 @@ INSERT INTO public.product_variations (id, product_id, name, price, sort_order, 
 ('1884992f-b763-4142-8581-8bb9fe12bf0f', '3351a034-16b9-4f4e-b688-de0969ec0a66', 'Suco Laranja', 8, 1, true, '2025-12-24 14:26:15.959+00'),
 ('b1367617-70d2-4843-918d-5840c83a59bc', '3351a034-16b9-4f4e-b688-de0969ec0a66', 'Suco Limão', 8, 2, true, '2025-12-24 14:26:15.959+00');
 
-SELECT '✅ SUCESSO: Banco de dados restaurado e populado com todos os produtos e variações!' as status;
+-- 5. ORDERS [cite: 27]
+INSERT INTO public.orders (id, customer_name, customer_phone, order_type, address, address_complement, table_number, items, total, status, notes, created_at) VALUES
+('5c586c62-7a57-4fc4-8cd9-8d720a18ed0e', 'Batata c/ Cheddar, Bacon e Calabresa', '32988949994', 'pickup', '', '', NULL, '[{"product":{"category":{"created_at":"2025-12-24T12:47:55.079548+00:00","description":null,"id":"27a1e7a7-155b-4fb3-ac2d-56f56cfde527","image_url":null,"is_active":true,"name":"Pizzas","sort_order":4},"category_id":"27a1e7a7-155b-4fb3-ac2d-56f56cfde527","created_at":"2025-12-24T14:15:20.208369+00:00","description":"Muçarela, tomate, parmesão, manjericão, azeitona e orégano.","id":"77c5da13-f382-4272-9ff9-df5c4c798318","image_url":"https://res.cloudinary.com/dbes24whl/image/upload/v1753214129/cardapio-digital-images/d5nqwzfnfleeapi3zmzy.jpg","is_active":true,"is_featured":false,"name":"Pizza Margherita","price":30,"promotion":null},"quantity":1,"variation":{"created_at":"2025-12-24T14:26:15.95907+00:00","id":"e876d1c9-6c1d-4325-a93f-c8b9fad042eb","is_active":true,"name":"Pequena","price":30,"product_id":"77c5da13-f382-4272-9ff9-df5c4c798318","sort_order":1}}]', 30.00, 'confirmed', '', '2025-12-27 02:26:47.080+00');
+
+-- 6. CATEGORY ADDONS [cite: 2]
+INSERT INTO public.category_addons (id, category_id, name, price, is_active, sort_order, created_at) VALUES
+('54a0ed72-423b-4447-8a95-cbf8d12e52ab', '2b60edd5-84e9-423e-9721-33d8d5ca6adf', 'Cheddar', 2, true, 1, '2025-12-29 15:02:39.698+00');
+
+SELECT '✅ BANCO RESTAURADO COM SUCESSO! ESTRUTURA E DADOS OK.' as status;
