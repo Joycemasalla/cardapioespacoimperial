@@ -1,16 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Crown } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Traduz mensagens de erro do Supabase para português
+const translateError = (message: string): string => {
+  const translations: Record<string, string> = {
+    'Invalid login credentials': 'Email ou senha incorretos',
+    'User already registered': 'Este email já está cadastrado',
+    'Email not confirmed': 'Email não confirmado. Verifique sua caixa de entrada.',
+    'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
+    'Unable to validate email address: invalid format': 'Formato de email inválido',
+  };
+  return translations[message] || message;
+};
+
 export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -29,7 +43,7 @@ export default function Auth() {
       : await signUp(email, password, fullName);
     
     if (error) {
-      toast.error(error.message);
+      toast.error(translateError(error.message));
     } else if (!isLogin) {
       toast.success('Conta criada! Você já pode fazer login.');
       setIsLogin(true);
@@ -37,7 +51,66 @@ export default function Auth() {
     setLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error('Digite seu email');
+      return;
+    }
+    setLoading(true);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    });
+    
+    if (error) {
+      toast.error(translateError(error.message));
+    } else {
+      toast.success('Email de recuperação enviado! Verifique sua caixa de entrada.');
+      setIsForgotPassword(false);
+    }
+    setLoading(false);
+  };
+
   if (isLoading) return <div className="min-h-screen bg-background dark flex items-center justify-center"><div className="animate-pulse">Carregando...</div></div>;
+
+  if (isForgotPassword) {
+    return (
+      <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <Crown className="h-12 w-12 text-primary mx-auto" />
+            <h1 className="text-2xl font-display font-bold mt-4">Recuperar Senha</h1>
+            <p className="text-muted-foreground mt-2">Digite seu email para receber um link de recuperação</p>
+          </div>
+          
+          <form onSubmit={handleForgotPassword} className="space-y-4 bg-card p-6 rounded-lg border border-border">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="seu@email.com"
+                required 
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+            </Button>
+          </form>
+          
+          <p className="text-center text-sm text-muted-foreground">
+            Lembrou a senha?{' '}
+            <button onClick={() => setIsForgotPassword(false)} className="text-primary hover:underline">
+              Voltar ao login
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
@@ -60,7 +133,18 @@ export default function Auth() {
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex justify-between items-center">
+              <Label htmlFor="password">Senha</Label>
+              {isLogin && (
+                <button 
+                  type="button"
+                  onClick={() => setIsForgotPassword(true)} 
+                  className="text-xs text-primary hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
+            </div>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Aguarde...' : isLogin ? 'Entrar' : 'Criar conta'}</Button>
