@@ -1,6 +1,11 @@
 -- ====================================================================
--- BACKUP MASTER V4 - ATUALIZADO EM 30/01/2026
--- INCLUI: PREÇOS ATUALIZADOS + CATEGORIA PICANHA NA PEDRA + ADICIONAIS BAGUETE
+-- BACKUP MASTER V5 - ATUALIZADO EM 30/01/2026
+-- INCLUI: RLS OTIMIZADO E SEGURO + PREÇOS ATUALIZADOS + PICANHA NA PEDRA
+-- CORREÇÕES DE SEGURANÇA:
+--   1. Policy orders_insert com validação de campos obrigatórios (não mais WITH CHECK true)
+--   2. Todas policies usando (select auth.uid()) para melhor performance
+--   3. Policies separadas por operação (SELECT/INSERT/UPDATE/DELETE)
+--   4. Admin verificado via função SECURITY DEFINER has_role()
 -- ====================================================================
 
 -- 1. LIMPEZA TOTAL (Necessário para garantir que a estrutura seja idêntica)
@@ -128,10 +133,10 @@ CREATE TABLE public.user_roles (
 );
 
 -- ====================================================================
--- PARTE 2: SEGURANÇA
+-- PARTE 2: SEGURANÇA (V5 - OTIMIZADO E CORRIGIDO)
 -- ====================================================================
 
--- Função Auxiliar
+-- Função Auxiliar (SECURITY DEFINER para evitar recursão RLS)
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
@@ -165,37 +170,119 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
--- Policies
-CREATE POLICY "Public view active categories" ON public.categories FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins manage categories" ON public.categories FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- =============================================
+-- POLICIES OTIMIZADAS (usa (select auth.uid()) para performance)
+-- =============================================
 
-CREATE POLICY "Public view active products" ON public.products FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins manage products" ON public.products FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- CATEGORIES
+CREATE POLICY "categories_select_public" ON public.categories 
+  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "categories_select_admin" ON public.categories 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "categories_insert_admin" ON public.categories 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "categories_update_admin" ON public.categories 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "categories_delete_admin" ON public.categories 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Public view variations" ON public.product_variations FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins manage variations" ON public.product_variations FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- PRODUCTS
+CREATE POLICY "products_select_public" ON public.products 
+  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "products_select_admin" ON public.products 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "products_insert_admin" ON public.products 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "products_update_admin" ON public.products 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "products_delete_admin" ON public.products 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Public view addons" ON public.category_addons FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins manage addons" ON public.category_addons FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- PRODUCT_VARIATIONS
+CREATE POLICY "variations_select_public" ON public.product_variations 
+  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "variations_select_admin" ON public.product_variations 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "variations_insert_admin" ON public.product_variations 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "variations_update_admin" ON public.product_variations 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "variations_delete_admin" ON public.product_variations 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Public view promotions" ON public.promotions FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins manage promotions" ON public.promotions FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- CATEGORY_ADDONS
+CREATE POLICY "addons_select_public" ON public.category_addons 
+  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "addons_select_admin" ON public.category_addons 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "addons_insert_admin" ON public.category_addons 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "addons_update_admin" ON public.category_addons 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "addons_delete_admin" ON public.category_addons 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Public view settings" ON public.settings FOR SELECT USING (true);
-CREATE POLICY "Admins update settings" ON public.settings FOR ALL USING (has_role(auth.uid(), 'admin'));
+-- PROMOTIONS
+CREATE POLICY "promotions_select_public" ON public.promotions 
+  FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "promotions_select_admin" ON public.promotions 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "promotions_insert_admin" ON public.promotions 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "promotions_update_admin" ON public.promotions 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "promotions_delete_admin" ON public.promotions 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Public create orders" ON public.orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins view orders" ON public.orders FOR SELECT USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins update orders" ON public.orders FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+-- SETTINGS
+CREATE POLICY "settings_select_public" ON public.settings 
+  FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "settings_insert_admin" ON public.settings 
+  FOR INSERT TO authenticated WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "settings_update_admin" ON public.settings 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "settings_delete_admin" ON public.settings 
+  FOR DELETE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
 
-CREATE POLICY "Users manage profile" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "Users view roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+-- ORDERS (CORRIGIDO - não usa mais WITH CHECK (true))
+CREATE POLICY "orders_insert_public" ON public.orders 
+  FOR INSERT TO anon, authenticated 
+  WITH CHECK (
+    customer_name IS NOT NULL 
+    AND customer_phone IS NOT NULL 
+    AND items IS NOT NULL 
+    AND total > 0
+  );
+CREATE POLICY "orders_select_admin" ON public.orders 
+  FOR SELECT TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "orders_update_admin" ON public.orders 
+  FOR UPDATE TO authenticated USING (public.has_role((select auth.uid()), 'admin'::app_role)) 
+  WITH CHECK (public.has_role((select auth.uid()), 'admin'::app_role));
+
+-- PROFILES
+CREATE POLICY "profiles_select_own" ON public.profiles 
+  FOR SELECT TO authenticated USING ((select auth.uid()) = id);
+CREATE POLICY "profiles_insert_own" ON public.profiles 
+  FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) = id);
+CREATE POLICY "profiles_update_own" ON public.profiles 
+  FOR UPDATE TO authenticated USING ((select auth.uid()) = id) 
+  WITH CHECK ((select auth.uid()) = id);
+
+-- USER_ROLES
+CREATE POLICY "user_roles_select_own" ON public.user_roles 
+  FOR SELECT TO authenticated USING ((select auth.uid()) = user_id);
 
 -- Storage
 INSERT INTO storage.buckets (id, name, public) VALUES ('images', 'images', true) ON CONFLICT (id) DO NOTHING;
 CREATE POLICY "Public view images" ON storage.objects FOR SELECT USING (bucket_id = 'images');
-CREATE POLICY "Admins upload images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins delete images" ON storage.objects FOR DELETE USING (bucket_id = 'images' AND has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins upload images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'images' AND public.has_role((select auth.uid()), 'admin'::app_role));
+CREATE POLICY "Admins delete images" ON storage.objects FOR DELETE USING (bucket_id = 'images' AND public.has_role((select auth.uid()), 'admin'::app_role));
 
 -- ====================================================================
 -- PARTE 3: DADOS (ATUALIZADO EM 30/01/2026)
